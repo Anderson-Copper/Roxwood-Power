@@ -1,3 +1,4 @@
+// ✅ Version complète mise à jour de bot-vehicules.js
 require('dotenv').config();
 const fs = require('fs');
 const {
@@ -12,9 +13,8 @@ const {
   Routes
 } = require('discord.js');
 
-// 🔧 À remplir avec les infos du serveur Roxwood PWR
-const GUILD_ID = '1363243114822766763'; // ID serveur Roxwood
-const VEHICULE_ADMIN_ROLE_ID = '1374863891296682185'; // ID rôle admin véhicule
+const GUILD_ID = '1363243114822766763';
+const VEHICULE_ADMIN_ROLE_ID = '1374863891296682185';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -80,7 +80,8 @@ async function resyncVehiclesFromChannels(channelIds = []) {
           nom,
           plaque: fields['📋 Plaque'] || '???',
           disponible: fields['📍 Disponible']?.includes('Oui'),
-          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?\d+>/) || [])[0] || 'Aucun',
+          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?
+\d+>/) || [])[0] || 'Aucun',
           derniere_utilisation: fields['📜 Dernière utilisation']?.split(' le ')[1] || null,
           image: embed.image?.url || null,
           messageId: msg.id,
@@ -129,24 +130,52 @@ client.once('ready', async () => {
     console.error('❌ Erreur mise à jour des commandes slash :', error);
   }
 
-  await resyncVehiclesFromChannels(); // tu ajouteras manuellement les salons à surveiller
-  for (const id in vehicles) {
-    try {
-      const v = vehicles[id];
-      const channel = await client.channels.fetch(v.channelId);
-      const message = await channel.messages.fetch(v.messageId);
-      const updatedEmbed = createVehicleEmbed(v);
-      const updatedRow = createVehicleButtons(id, v.disponible);
-      await message.edit({ embeds: [updatedEmbed], components: [updatedRow] });
-
-      console.log(`🔁 Boutons rechargés pour le véhicule ${id}`);
-    } catch (err) {
-      console.warn(`⚠️ Impossible de recharger ${id} : ${err.message}`);
-    }
-  }
+  await resyncVehiclesFromChannels();
 });
 
 client.on('interactionCreate', async interaction => {
+  // ✅ GESTION SLASH /addvehicle
+  if (interaction.isChatInputCommand() && interaction.commandName === 'addvehicle') {
+    await interaction.deferReply({ ephemeral: true });
+
+    const nom = interaction.options.getString('nom');
+    const id = interaction.options.getString('id');
+    const plaque = interaction.options.getString('plaque');
+    const image = interaction.options.getAttachment('image');
+
+    if (vehicles[id]) {
+      return interaction.editReply({ content: `🚫 Un véhicule avec l'ID \`${id}\` existe déjà.` });
+    }
+
+    const newVehicle = {
+      id,
+      nom,
+      plaque,
+      disponible: true,
+      dernier_utilisateur: null,
+      derniere_utilisation: null,
+      image: image.url,
+      messageId: null,
+      channelId: null,
+      threadId: null,
+      heure_debut: null
+    };
+
+    const channel = interaction.channel;
+    const embed = createVehicleEmbed(newVehicle);
+    const row = createVehicleButtons(id, true);
+
+    const msg = await channel.send({ embeds: [embed], components: [row] });
+    newVehicle.messageId = msg.id;
+    newVehicle.channelId = msg.channel.id;
+    vehicles[id] = newVehicle;
+    saveVehicles();
+
+    await interaction.editReply({ content: `✅ Véhicule \`${nom}\` ajouté avec succès !` });
+    return;
+  }
+
+  // ✅ GESTION DES BOUTONS
   if (!interaction.isButton()) return;
 
   const [action, id] = interaction.customId.split('_');
@@ -213,6 +242,5 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// ✅ Connexion via variables d'environnement dédiées à Roxwood
 client.login(process.env.DISCORD_TOKEN_PWR);
 
