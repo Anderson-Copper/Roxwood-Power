@@ -1,0 +1,11 @@
+{
+  "ID_DU_MESSAGE_EMBED": {
+    "nom": "Nom du véhicule",
+    "plaque": "AB-123-CD",
+    "disponible": true,
+    "dernier_utilisateur": "Nom ou ID",
+    "heure_utilisation": "2025-05-22T10:34:00Z",
+    "thread": "ID_DU_THREAD",
+    "image": "URL image du véhicule"
+  }
+}
