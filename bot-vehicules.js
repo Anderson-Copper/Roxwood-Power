@@ -80,8 +80,7 @@ async function resyncVehiclesFromChannels(channelIds = []) {
           nom,
           plaque: fields['📋 Plaque'] || '???',
           disponible: fields['📍 Disponible']?.includes('Oui'),
-          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?
-\d+>/) || [])[0] || 'Aucun',
+          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?\\d+>/) || [])[0] || 'Aucun',
           derniere_utilisation: fields['📜 Dernière utilisation']?.split(' le ')[1] || null,
           image: embed.image?.url || null,
           messageId: msg.id,
