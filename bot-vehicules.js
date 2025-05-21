@@ -212,8 +212,15 @@ client.on('interactionCreate', async interaction => {
         )
         .setTimestamp();
 
-      const thread = await client.channels.fetch(vehicle.threadId);
-      if (thread) await thread.send({ embeds: [embed] });
+      if (vehicle.threadId) {
+  try {
+    const thread = await client.channels.fetch(vehicle.threadId);
+    await thread.send({ embeds: [embed] });
+  } catch (err) {
+    console.warn(`⚠️ Thread introuvable pour le véhicule ${vehicle.id}`);
+  }
+}
+
       saveVehicles();
     }
 
