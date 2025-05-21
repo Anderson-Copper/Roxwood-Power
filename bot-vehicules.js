@@ -1,4 +1,4 @@
-// ✅ Version complète mise à jour de bot-vehicules.js
+// ✅ Version complète avec création automatique de thread pour chaque véhicule
 require('dotenv').config();
 const fs = require('fs');
 const {
@@ -56,53 +56,6 @@ function createVehicleButtons(id, disponible) {
   );
 }
 
-async function resyncVehiclesFromChannels(channelIds = []) {
-  for (const channelId of channelIds) {
-    try {
-      const channel = await client.channels.fetch(channelId);
-      if (!channel.isTextBased()) continue;
-
-      const messages = await channel.messages.fetch({ limit: 100 });
-      for (const msg of messages.values()) {
-        const embed = msg.embeds[0];
-        if (!embed || !embed.title?.startsWith('🚘')) continue;
-
-        const nomMatch = embed.title.match(/^🚘 (.+) \((\d+)\)$/);
-        if (!nomMatch) continue;
-
-        const nom = nomMatch[1];
-        const id = nomMatch[2];
-        if (vehicles[id]) continue;
-
-        const fields = Object.fromEntries(embed.fields.map(f => [f.name, f.value]));
-        vehicles[id] = {
-          id,
-          nom,
-          plaque: fields['📋 Plaque'] || '???',
-          disponible: fields['📍 Disponible']?.includes('Oui'),
-          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?\\d+>/) || [])[0] || 'Aucun',
-          derniere_utilisation: fields['📜 Dernière utilisation']?.split(' le ')[1] || null,
-          image: embed.image?.url || null,
-          messageId: msg.id,
-          channelId: msg.channel.id,
-          threadId: msg.hasThread ? msg.thread.id : null,
-          heure_debut: null
-        };
-
-        const updatedEmbed = createVehicleEmbed(vehicles[id]);
-        const row = createVehicleButtons(id, vehicles[id].disponible);
-        await msg.edit({ embeds: [updatedEmbed], components: [row] });
-
-        console.log(`🧩 Véhicule récupéré depuis l'embed : ${id}`);
-      }
-    } catch (err) {
-      console.warn(`⚠️ Erreur récupération salon ${channelId} : ${err.message}`);
-    }
-  }
-
-  saveVehicles();
-}
-
 client.once('ready', async () => {
   console.log(`🚗 Bot véhicules Roxwood actif en tant que ${client.user.tag}`);
 
@@ -128,12 +81,9 @@ client.once('ready', async () => {
   } catch (error) {
     console.error('❌ Erreur mise à jour des commandes slash :', error);
   }
-
-  await resyncVehiclesFromChannels();
 });
 
 client.on('interactionCreate', async interaction => {
-  // ✅ GESTION SLASH /addvehicle
   if (interaction.isChatInputCommand() && interaction.commandName === 'addvehicle') {
     await interaction.deferReply({ ephemeral: true });
 
@@ -146,7 +96,14 @@ client.on('interactionCreate', async interaction => {
       return interaction.editReply({ content: `🚫 Un véhicule avec l'ID \`${id}\` existe déjà.` });
     }
 
-    const newVehicle = {
+    const channel = interaction.channel;
+    const embed = createVehicleEmbed({ id, nom, plaque, disponible: true, image: image.url });
+    const row = createVehicleButtons(id, true);
+
+    const msg = await channel.send({ embeds: [embed], components: [row] });
+    const thread = await msg.startThread({ name: `🧾 ${nom}`, autoArchiveDuration: 1440 });
+
+    vehicles[id] = {
       id,
       nom,
       plaque,
@@ -154,27 +111,17 @@ client.on('interactionCreate', async interaction => {
       dernier_utilisateur: null,
       derniere_utilisation: null,
       image: image.url,
-      messageId: null,
-      channelId: null,
-      threadId: null,
+      messageId: msg.id,
+      channelId: msg.channel.id,
+      threadId: thread.id,
       heure_debut: null
     };
 
-    const channel = interaction.channel;
-    const embed = createVehicleEmbed(newVehicle);
-    const row = createVehicleButtons(id, true);
-
-    const msg = await channel.send({ embeds: [embed], components: [row] });
-    newVehicle.messageId = msg.id;
-    newVehicle.channelId = msg.channel.id;
-    vehicles[id] = newVehicle;
     saveVehicles();
-
     await interaction.editReply({ content: `✅ Véhicule \`${nom}\` ajouté avec succès !` });
     return;
   }
 
-  // ✅ GESTION DES BOUTONS
   if (!interaction.isButton()) return;
 
   const [action, id] = interaction.customId.split('_');
@@ -213,14 +160,13 @@ client.on('interactionCreate', async interaction => {
         .setTimestamp();
 
       if (vehicle.threadId) {
-  try {
-    const thread = await client.channels.fetch(vehicle.threadId);
-    await thread.send({ embeds: [embed] });
-  } catch (err) {
-    console.warn(`⚠️ Thread introuvable pour le véhicule ${vehicle.id}`);
-  }
-}
-
+        try {
+          const thread = await client.channels.fetch(vehicle.threadId);
+          await thread.send({ embeds: [embed] });
+        } catch (err) {
+          console.warn(`⚠️ Thread introuvable pour le véhicule ${vehicle.id}`);
+        }
+      }
       saveVehicles();
     }
 
@@ -231,8 +177,14 @@ client.on('interactionCreate', async interaction => {
       }
 
       await message.delete();
-      const thread = await client.channels.fetch(vehicle.threadId);
-      if (thread) await thread.delete();
+      if (vehicle.threadId) {
+        try {
+          const thread = await client.channels.fetch(vehicle.threadId);
+          await thread.delete();
+        } catch (err) {
+          console.warn(`⚠️ Impossible de supprimer le thread : ${err.message}`);
+        }
+      }
 
       delete vehicles[id];
       saveVehicles();
