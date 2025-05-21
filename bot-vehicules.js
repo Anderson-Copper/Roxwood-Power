@@ -1,4 +1,4 @@
-// ✅ Version complète avec création automatique de thread pour chaque véhicule
+// ✅ Version complète avec création automatique de thread et resynchronisation des véhicules
 require('dotenv').config();
 const fs = require('fs');
 const {
@@ -56,6 +56,53 @@ function createVehicleButtons(id, disponible) {
   );
 }
 
+async function resyncVehiclesFromChannels(channelIds = []) {
+  for (const channelId of channelIds) {
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (!channel.isTextBased()) continue;
+
+      const messages = await channel.messages.fetch({ limit: 100 });
+      for (const msg of messages.values()) {
+        const embed = msg.embeds[0];
+        if (!embed || !embed.title?.startsWith('🚘')) continue;
+
+        const nomMatch = embed.title.match(/^🚘 (.+) \((.+)\)$/);
+        if (!nomMatch) continue;
+
+        const nom = nomMatch[1];
+        const id = nomMatch[2];
+        if (vehicles[id]) continue;
+
+        const fields = Object.fromEntries(embed.fields.map(f => [f.name, f.value]));
+        vehicles[id] = {
+          id,
+          nom,
+          plaque: fields['📋 Plaque'] || '???',
+          disponible: fields['📍 Disponible']?.includes('Oui'),
+          dernier_utilisateur: (fields['📜 Dernière utilisation']?.match(/<@!?\d+>/) || [])[0] || 'Aucun',
+          derniere_utilisation: fields['📜 Dernière utilisation']?.split(' le ')[1] || null,
+          image: embed.image?.url || null,
+          messageId: msg.id,
+          channelId: msg.channel.id,
+          threadId: msg.hasThread ? msg.thread.id : null,
+          heure_debut: null
+        };
+
+        const updatedEmbed = createVehicleEmbed(vehicles[id]);
+        const row = createVehicleButtons(id, vehicles[id].disponible);
+        await msg.edit({ embeds: [updatedEmbed], components: [row] });
+
+        console.log(`🧩 Véhicule récupéré depuis l'embed : ${id}`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Erreur récupération salon ${channelId} : ${err.message}`);
+    }
+  }
+
+  saveVehicles();
+}
+
 client.once('ready', async () => {
   console.log(`🚗 Bot véhicules Roxwood actif en tant que ${client.user.tag}`);
 
@@ -81,6 +128,12 @@ client.once('ready', async () => {
   } catch (error) {
     console.error('❌ Erreur mise à jour des commandes slash :', error);
   }
+
+  await resyncVehiclesFromChannels([
+    '1374865698882453596',
+    '1374884208924692562',
+    '1374884419818618920'
+  ]);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -201,5 +254,35 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
+  const commands = [
+    new SlashCommandBuilder()
+      .setName('addvehicle')
+      .setDescription('Ajoute un véhicule')
+      .addStringOption(opt => opt.setName('nom').setDescription('Nom du véhicule').setRequired(true))
+      .addStringOption(opt => opt.setName('id').setDescription('ID du véhicule').setRequired(true))
+      .addStringOption(opt => opt.setName('plaque').setDescription("Plaque d'immatriculation").setRequired(true))
+      .addAttachmentOption(opt => opt.setName('image').setDescription('Image PNG du véhicule').setRequired(true)),
+    new SlashCommandBuilder().setName('listvehicles').setDescription('Affiche la liste des véhicules'),
+    new SlashCommandBuilder()
+      .setName('removevehicle')
+      .setDescription('Supprime un véhicule existant')
+      .addStringOption(opt => opt.setName('id').setDescription('ID du véhicule à supprimer').setRequired(true))
+  ].map(cmd => cmd.toJSON());
+
+  try {
+    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID), { body: commands });
+    console.log('✅ Commandes slash mises à jour');
+  } catch (error) {
+    console.error('❌ Erreur mise à jour des commandes slash :', error);
+  }
+
+  await resyncVehiclesFromChannels([
+    '1374865698882453596',
+    '1374884208924692562',
+    '1374884419818618920'
+  ]);
+});
 
 
