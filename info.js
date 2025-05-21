@@ -28,4 +28,6 @@ module.exports = {
     facture: "💳 Facture envoyée à l'IBAN communiqué",
     regle: "✅ Facture réglée et commande cloturée"
   }
+// Fichier des véhicules persistants
+  vehiculeDataFile: './vehicles.json'
 };
