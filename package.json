@@ -1,0 +1,21 @@
+{
+  "name": "roxwood-pwr-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord Roxwood PWR pour la gestion des véhicules et interactions",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["discord", "bot", "roxwood", "vehicules"],
+  "author": "Roxwood",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
