@@ -27,7 +27,7 @@ module.exports = {
     livre: "⛽ Livraison effectuée dans le réservoir partenaire",
     facture: "💳 Facture envoyée à l'IBAN communiqué",
     regle: "✅ Facture réglée et commande cloturée"
-  }
-// Fichier des véhicules persistants
-  vehiculeDataFile: './vehicles.json'
+  },
+
+  vehiculeDataFile: './vehicles.json' // <-- bien incluse dans l'objet
 };
