@@ -197,31 +197,31 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (action === 'release' && !vehicle.disponible) {
-      vehicle.disponible = true;
-      const fin = new Date();
-      const duree = Math.round((fin - new Date(vehicle.heure_debut)) / 60000);
+  vehicle.disponible = true;
+  const fin = new Date();
+  const duree = Math.round((fin - new Date(vehicle.heure_debut)) / 60000);
 
-      const embed = new EmbedBuilder()
-        .setTitle('📝 Historique d\'utilisation')
-        .addFields(
-          { name: '👤 Utilisateur', value: vehicle.dernier_utilisateur, inline: true },
-          { name: '📅 Date', value: vehicle.heure_debut.toLocaleDateString('fr-FR'), inline: true },
-          { name: '🕓 De', value: vehicle.heure_debut.toLocaleTimeString('fr-FR'), inline: true },
-          { name: '🕔 À', value: fin.toLocaleTimeString('fr-FR'), inline: true },
-          { name: '🕘 Durée', value: `${duree} minutes`, inline: true }
-        )
-        .setTimestamp();
+  const embed = new EmbedBuilder()
+    .setTitle('📝 Historique d\'utilisation')
+    .addFields(
+      { name: '👤 Utilisateur', value: vehicle.dernier_utilisateur, inline: true },
+      { name: '📅 Date', value: vehicle.heure_debut.toLocaleDateString('fr-FR'), inline: true },
+      { name: '🕓 De', value: vehicle.heure_debut.toLocaleTimeString('fr-FR'), inline: true },
+      { name: '🕔 À', value: fin.toLocaleTimeString('fr-FR'), inline: true },
+      { name: '🕘 Durée', value: `${duree} minutes`, inline: true }
+    )
+    .setTimestamp();
 
-      if (vehicle.threadId) {
-        try {
-          const thread = await client.channels.fetch(vehicle.threadId);
-          await thread.send({ embeds: [embed] });
-        } catch (err) {
-          console.warn(`⚠️ Thread introuvable pour le véhicule ${vehicle.id}`);
-        }
-      }
-      saveVehicles();
+  if (vehicle.threadId) {
+    try {
+      const thread = await client.channels.fetch(vehicle.threadId);
+      await thread.send({ embeds: [embed] });
+    } catch (err) {
+      console.warn(`⚠️ Thread introuvable pour le véhicule ${vehicle.id}`);
     }
+  }
+  saveVehicles();
+}
 
     if (action === 'delete') {
       const member = await interaction.guild.members.fetch(interaction.user.id);
