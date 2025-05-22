@@ -5,53 +5,90 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
 });
 
-// Salon où l'embed sera envoyé (📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧)
+const GUILD_ID = '1363243114822766763';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 
-// Enregistrement de la commande au démarrage
+const couleurs = {
+  rouge: 0xFF0000,
+  orange: 0xFFA500,
+  vert: 0x00FF00,
+  bleu: 0x0099FF
+};
+
 client.once('ready', async () => {
   console.log(`✅ Bot consommation connecté en tant que ${client.user.tag}`);
 
   const commands = [
     new SlashCommandBuilder()
       .setName('creer-embed')
-      .setDescription("Crée un embed de test dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧")
+      .setDescription('Crée un embed de consommation pour une entreprise')
+      .addStringOption(opt =>
+        opt.setName('entreprise')
+          .setDescription('Nom de l’entreprise')
+          .setRequired(true)
+          .addChoices(
+            { name: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝', value: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝' },
+            { name: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬', value: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬' },
+            { name: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥', value: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥' },
+            { name: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭', value: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭' }
+          )
+      )
+      .addStringOption(opt =>
+        opt.setName('couleur')
+          .setDescription('Couleur de l\'embed')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Rouge', value: 'rouge' },
+            { name: 'Orange', value: 'orange' },
+            { name: 'Vert', value: 'vert' },
+            { name: 'Bleu', value: 'bleu' }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt.setName('objectif_litre')
+          .setDescription('Objectif en litres (ex: 10000)')
+          .setRequired(true)
+      )
       .toJSON()
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
+  await rest.put(Routes.applicationGuildCommands(client.user.id, GUILD_ID), { body: commands });
 
-  try {
-    await rest.put(Routes.applicationGuildCommands(client.user.id, '1363243114822766763'), { body: commands });
-    console.log('✅ Commande /creer-embed enregistrée');
-  } catch (err) {
-    console.error('❌ Erreur enregistrement commande :', err);
-  }
+  console.log('✅ Commande /creer-embed enregistrée');
 });
 
-// Quand un utilisateur utilise une commande
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== 'creer-embed') return;
 
-  await interaction.deferReply({ ephemeral: true });
+  const entreprise = interaction.options.getString('entreprise');
+  const couleur = interaction.options.getString('couleur');
+  const objectif = interaction.options.getInteger('objectif_litre');
 
   const embed = new EmbedBuilder()
-    .setTitle('📊 Test Suivi de consommation')
-    .setDescription('🔋 Remplissage : **0L / 10000L**')
-    .setColor(0x0099FF)
+    .setTitle(`📊 Suivi de consommation - ${entreprise}`)
+    .setDescription(`
+━━━━━━━━━━━━━━━━━━
+🏢 **Entreprise :** ${entreprise}
+
+💧 **Consommation actuelle :** \`0 L\`
+🎯 **Objectif de la semaine :** \`${objectif} L\`
+
+📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}
+━━━━━━━━━━━━━━━━━━
+`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png') // Logo goutte bleue
     .setTimestamp();
 
-  try {
-    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-    await channel.send({ embeds: [embed] });
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  await channel.send({ embeds: [embed] });
 
-    await interaction.editReply({ content: '✅ Embed envoyé dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧 !' });
-  } catch (err) {
-    console.error('❌ Erreur envoi embed :', err);
-    await interaction.editReply({ content: '❌ Impossible d’envoyer l’embed.' });
-  }
+  await interaction.reply({
+    content: `✅ Embed pour **${entreprise}** envoyé avec succès !`,
+    flags: 1 << 6 // ephemeral
+  });
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
