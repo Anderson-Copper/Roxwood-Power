@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
+    "start": "npx concurrently \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\"",
     "dev": "nodemon index.js"
   },
   "keywords": ["discord", "bot", "roxwood", "vehicules"],
@@ -13,7 +13,8 @@
   "license": "MIT",
   "dependencies": {
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
