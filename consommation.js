@@ -11,6 +11,25 @@ const client = new Client({
   ],
 });
 
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'creer-embed') {
+    await interaction.reply({ content: '📊 Création des embeds en cours...', ephemeral: true });
+
+    for (const ltd of Object.values(LTD_CHANNELS)) {
+      const embed = generateEmbed(ltd.name, ltd.color);
+      await fetch(CONSO_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+      });
+    }
+
+    await interaction.editReply('✅ Les embeds des LTD ont été postés dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧.');
+  }
+});
+
 // Configuration des LTD
 const LTD_CHANNELS = {
   '1375134527118381066': { name: 'Grove Street', color: 0xFF0000 },
