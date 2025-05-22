@@ -1,10 +1,29 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { REST, Routes } = require('discord.js');
+require('dotenv').config();
+const fs = require('node:fs');
+const path = require('node:path');
 
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('creer-embed')
-    .setDescription('Crée les embeds de suivi consommation pour tous les LTD'),
-  async execute(interaction) {
-    // ce code n’est pas utilisé, car on gère la commande dans consommation.js directement
-  },
-};
+const commands = [];
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  commands.push(command.data.toJSON());
+}
+
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
+
+(async () => {
+  try {
+    console.log('💾 Déploiement des commandes slash...');
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, process.env.GUILD_ID_PWR),
+      { body: commands },
+    );
+    console.log('✅ Commandes déployées avec succès !');
+  } catch (error) {
+    console.error('❌ Erreur lors du déploiement :', error);
+  }
+})();
