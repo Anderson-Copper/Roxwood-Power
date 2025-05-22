@@ -1,49 +1,56 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, Routes, REST, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages
-  ]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
 });
 
-// Salon de destination
+// Salon où l'embed sera envoyé (📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧)
 const CONSO_CHANNEL_ID = '1374906428418031626';
 
+// Enregistrement de la commande au démarrage
 client.once('ready', async () => {
-  console.log(`✅ Bot connecté : ${client.user.tag}`);
+  console.log(`✅ Bot consommation connecté en tant que ${client.user.tag}`);
 
-  // Enregistrement dynamique
   const commands = [
     new SlashCommandBuilder()
       .setName('creer-embed')
-      .setDescription('Crée un embed de test dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧')
+      .setDescription("Crée un embed de test dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧")
       .toJSON()
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
-  console.log('✅ Commande slash /creer-embed enregistrée');
+  try {
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    console.log('✅ Commande /creer-embed enregistrée');
+  } catch (err) {
+    console.error('❌ Erreur enregistrement commande :', err);
+  }
 });
 
+// Quand un utilisateur utilise une commande
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== 'creer-embed') return;
 
-  console.log(`[CMD] /creer-embed exécutée par ${interaction.user.tag}`);
-  await interaction.reply({ content: '✅ Embed envoyé.', ephemeral: true });
-
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  await interaction.deferReply({ ephemeral: true });
 
   const embed = new EmbedBuilder()
-    .setTitle('📦 Commande Test')
-    .setDescription(`Test de création d'un embed.\nQuantité : **500 Pommes** 🍎`)
-    .setColor(0x00AAFF)
+    .setTitle('📊 Test Suivi de consommation')
+    .setDescription('🔋 Remplissage : **0L / 10000L**')
+    .setColor(0x0099FF)
     .setTimestamp();
 
-  await channel.send({ embeds: [embed] });
+  try {
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    await channel.send({ embeds: [embed] });
+
+    await interaction.editReply({ content: '✅ Embed envoyé dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧 !' });
+  } catch (err) {
+    console.error('❌ Erreur envoi embed :', err);
+    await interaction.editReply({ content: '❌ Impossible d’envoyer l’embed.' });
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
