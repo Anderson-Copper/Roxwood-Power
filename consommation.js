@@ -1,14 +1,10 @@
-const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, Collection, ThreadAutoArchiveDuration } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, Routes, REST, ThreadAutoArchiveDuration } = require('discord.js');
 const fs = require('fs');
 const fetch = require('node-fetch');
 require('dotenv').config();
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 // Config LTD
@@ -22,11 +18,11 @@ const LTD_CHANNELS = {
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const CONSO_WEBHOOK = 'https://discord.com/api/webhooks/1375161041876680847/kqrCZQpOs2J8atEFCIwXSt4dBtsY7zUqE_wkZiCfp4ceCWoFUD5nXJeyTxq7mNXFOgrg';
 const LOG_DEPOT_ID = '1375153166424866867';
+const ROLE_ADMIN_ID = '1375058990152548372';
 
 const DATA_FILE = './data.json';
 let data = {};
 
-// Chargement des données
 function loadData() {
   if (fs.existsSync(DATA_FILE)) {
     data = JSON.parse(fs.readFileSync(DATA_FILE));
@@ -38,12 +34,10 @@ function loadData() {
   }
 }
 
-// Sauvegarde
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// Génère l’embed
 function generateEmbed(ltdName, color) {
   return new EmbedBuilder()
     .setTitle(`📊 Suivi de consommation - ${ltdName}`)
@@ -53,7 +47,6 @@ function generateEmbed(ltdName, color) {
     .setTimestamp();
 }
 
-// Poste l’embed dans la liaison consommation
 async function postEmbed(ltdName, color) {
   const embed = generateEmbed(ltdName, color);
   await fetch(CONSO_WEBHOOK, {
@@ -63,61 +56,84 @@ async function postEmbed(ltdName, color) {
   });
 }
 
-client.once('ready', () => {
-  console.log(`✅ Bot connecté : ${client.user.tag}`);
+// Auto commande dynamique
+client.on('ready', async () => {
+  console.log(`✅ Connecté : ${client.user.tag}`);
   loadData();
 
-  // Vérifie chaque minute si on est vendredi 23:59
+  const commands = [
+    new SlashCommandBuilder()
+      .setName('creer-embed')
+      .setDescription('Crée les embeds de suivi consommation pour tous les LTD')
+      .toJSON()
+  ];
+
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
+  await rest.put(
+    Routes.applicationCommands(client.user.id),
+    { body: commands }
+  );
+
+  console.log('✅ Commande slash enregistrée');
+
+  // Archive hebdo automatique
   setInterval(async () => {
     const now = new Date();
     if (now.getDay() === 5 && now.getHours() === 23 && now.getMinutes() === 59) {
       const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
       const thread = await channel.threads.create({
-        name: `Archives - Semaine ${now.toLocaleDateString('fr-FR')}`,
+        name: `🧾 Archives - Semaine ${now.toLocaleDateString('fr-FR')}`,
         autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
       });
 
-      for (const [_, ltd] of Object.entries(LTD_CHANNELS)) {
-        const ltdName = ltd.name;
-        const archiveEmbed = generateEmbed(ltdName, ltd.color);
+      for (const ltd of Object.values(LTD_CHANNELS)) {
+        const archiveEmbed = generateEmbed(ltd.name, ltd.color);
         await thread.send({ embeds: [archiveEmbed] });
-        data[ltdName].actuel = 0;
-        await postEmbed(ltdName, ltd.color);
+        data[ltd.name].actuel = 0;
+        await postEmbed(ltd.name, ltd.color);
       }
 
       saveData();
     }
-  }, 60 * 1000);
+  }, 60000);
 });
 
-// Slash command : /creer-embed
+// Slash /creer-embed
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'creer-embed') return;
 
-  if (interaction.commandName === 'creer-embed') {
-    await interaction.reply({ content: '📊 Création des embeds en cours...', ephemeral: true });
-
-    for (const ltd of Object.values(LTD_CHANNELS)) {
-      const embed = generateEmbed(ltd.name, ltd.color);
-      await fetch(CONSO_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeds: [embed] }),
-      });
-    }
-
-    await interaction.editReply('✅ Les embeds ont été envoyés dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧.');
+  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+    return interaction.reply({ content: '❌ Tu n’as pas la permission d’utiliser cette commande.', ephemeral: true });
   }
+
+  await interaction.reply({ content: '📊 Création en cours...', ephemeral: true });
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const now = new Date();
+  const thread = await channel.threads.create({
+    name: `🧾 Archives - Semaine ${now.toLocaleDateString('fr-FR')}`,
+    autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
+  });
+
+  for (const ltd of Object.values(LTD_CHANNELS)) {
+    const embed = generateEmbed(ltd.name, ltd.color);
+    await thread.send({ embeds: [embed] });
+    await postEmbed(ltd.name, ltd.color);
+  }
+
+  await interaction.editReply('✅ Les nouveaux embeds ont été envoyés et les anciens archivés.');
+  saveData();
 });
 
-// Gestion des messages (commandes, ajustements, dépôts)
+// Commandes / ajustements / dépôts
 client.on('messageCreate', async (message) => {
   if (!message.embeds.length) return;
   const embed = message.embeds[0];
   const title = embed.title || '';
   const description = embed.description || '';
 
-  // Commande ou ajustement dans un salon LTD
+  // Commandes et ajustements
   if (LTD_CHANNELS[message.channelId]) {
     const ltd = LTD_CHANNELS[message.channelId];
     const ltdName = ltd.name;
@@ -140,7 +156,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Dépôt dans salon spécifique
+  // Dépôts
   if (message.channelId === LOG_DEPOT_ID) {
     for (const ltd of Object.values(LTD_CHANNELS)) {
       if (description.includes(ltd.name)) {
@@ -157,3 +173,4 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
