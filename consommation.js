@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ThreadAutoArchiveDuration } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, Collection, ThreadAutoArchiveDuration } = require('discord.js');
 const fs = require('fs');
 const fetch = require('node-fetch');
 require('dotenv').config();
@@ -7,30 +7,11 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'creer-embed') {
-    await interaction.reply({ content: '📊 Création des embeds en cours...', ephemeral: true });
-
-    for (const ltd of Object.values(LTD_CHANNELS)) {
-      const embed = generateEmbed(ltd.name, ltd.color);
-      await fetch(CONSO_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeds: [embed] }),
-      });
-    }
-
-    await interaction.editReply('✅ Les embeds des LTD ont été postés dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧.');
-  }
-});
-
-// Configuration des LTD
+// Config LTD
 const LTD_CHANNELS = {
   '1375134527118381066': { name: 'Grove Street', color: 0xFF0000 },
   '1375134545275523243': { name: 'Little Seoul', color: 0x00FF00 },
@@ -45,7 +26,7 @@ const LOG_DEPOT_ID = '1375153166424866867';
 const DATA_FILE = './data.json';
 let data = {};
 
-// Charger les données sauvegardées
+// Chargement des données
 function loadData() {
   if (fs.existsSync(DATA_FILE)) {
     data = JSON.parse(fs.readFileSync(DATA_FILE));
@@ -57,12 +38,12 @@ function loadData() {
   }
 }
 
-// Sauvegarder les données
+// Sauvegarde
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// Créer un embed de suivi
+// Génère l’embed
 function generateEmbed(ltdName, color) {
   return new EmbedBuilder()
     .setTitle(`📊 Suivi de consommation - ${ltdName}`)
@@ -72,7 +53,7 @@ function generateEmbed(ltdName, color) {
     .setTimestamp();
 }
 
-// Poster un embed à jour
+// Poste l’embed dans la liaison consommation
 async function postEmbed(ltdName, color) {
   const embed = generateEmbed(ltdName, color);
   await fetch(CONSO_WEBHOOK, {
@@ -83,10 +64,10 @@ async function postEmbed(ltdName, color) {
 }
 
 client.once('ready', () => {
-  console.log(`✅ Connecté en tant que ${client.user.tag}`);
+  console.log(`✅ Bot connecté : ${client.user.tag}`);
   loadData();
 
-  // Vérifie toutes les minutes si c’est vendredi 23h59
+  // Vérifie chaque minute si on est vendredi 23:59
   setInterval(async () => {
     const now = new Date();
     if (now.getDay() === 5 && now.getHours() === 23 && now.getMinutes() === 59) {
@@ -109,6 +90,27 @@ client.once('ready', () => {
   }, 60 * 1000);
 });
 
+// Slash command : /creer-embed
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'creer-embed') {
+    await interaction.reply({ content: '📊 Création des embeds en cours...', ephemeral: true });
+
+    for (const ltd of Object.values(LTD_CHANNELS)) {
+      const embed = generateEmbed(ltd.name, ltd.color);
+      await fetch(CONSO_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+      });
+    }
+
+    await interaction.editReply('✅ Les embeds ont été envoyés dans 📉・𝐂𝐨𝐧𝐬𝐨𝐦𝐦𝐚𝐭𝐢𝐨𝐧.');
+  }
+});
+
+// Gestion des messages (commandes, ajustements, dépôts)
 client.on('messageCreate', async (message) => {
   if (!message.embeds.length) return;
   const embed = message.embeds[0];
@@ -138,7 +140,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Dépôt dans LOG_DEPOT_ID
+  // Dépôt dans salon spécifique
   if (message.channelId === LOG_DEPOT_ID) {
     for (const ltd of Object.values(LTD_CHANNELS)) {
       if (description.includes(ltd.name)) {
