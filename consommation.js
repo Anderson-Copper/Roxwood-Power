@@ -78,7 +78,7 @@ client.on('interactionCreate', async (interaction) => {
 📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}
 ━━━━━━━━━━━━━━━━━━
 `)
-    .setColor(couleurs[couleur])
+    .setColor(couleurs[couleur] ?? 0x0099FF)
     .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png') // Logo goutte bleue
     .setTimestamp();
 
