@@ -22,7 +22,7 @@ client.once('ready', async () => {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
 
   try {
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    await rest.put(Routes.applicationGuildCommands(client.user.id, '1363243114822766763'), { body: commands });
     console.log('✅ Commande /creer-embed enregistrée');
   } catch (err) {
     console.error('❌ Erreur enregistrement commande :', err);
