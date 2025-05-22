@@ -4,7 +4,12 @@ const fetch = require('node-fetch');
 require('dotenv').config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers // ⚠️ nécessaire pour voir les rôles
+  ]
 });
 
 // Config LTD
@@ -69,10 +74,7 @@ client.on('ready', async () => {
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  await rest.put(
-    Routes.applicationCommands(client.user.id),
-    { body: commands }
-  );
+  await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
 
   console.log('✅ Commande slash enregistrée');
 
@@ -103,9 +105,15 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== 'creer-embed') return;
 
-  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-    return interaction.reply({ content: '❌ Tu n’as pas la permission d’utiliser cette commande.', ephemeral: true });
-  }
+  console.log(`[2] ➕ Commande /creer-embed appelée par ${interaction.user.tag}`);
+
+  // TEMPORAIRE : désactive le contrôle de rôle pour test
+  // if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+  //   console.log(`[2] ❌ ${interaction.user.tag} n’a pas le rôle requis`);
+  //   return interaction.reply({ content: '❌ Tu n’as pas la permission d’utiliser cette commande.', ephemeral: true });
+  // }
+
+  console.log(`[2] ✅ Rôle validé ou désactivé`);
 
   await interaction.reply({ content: '📊 Création en cours...', ephemeral: true });
 
@@ -123,6 +131,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   await interaction.editReply('✅ Les nouveaux embeds ont été envoyés et les anciens archivés.');
+  console.log(`[2] ✅ Embeds créés et archivés par ${interaction.user.tag}`);
   saveData();
 });
 
@@ -133,7 +142,6 @@ client.on('messageCreate', async (message) => {
   const title = embed.title || '';
   const description = embed.description || '';
 
-  // Commandes et ajustements
   if (LTD_CHANNELS[message.channelId]) {
     const ltd = LTD_CHANNELS[message.channelId];
     const ltdName = ltd.name;
@@ -156,7 +164,6 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Dépôts
   if (message.channelId === LOG_DEPOT_ID) {
     for (const ltd of Object.values(LTD_CHANNELS)) {
       if (description.includes(ltd.name)) {
