@@ -56,6 +56,7 @@ client.once('ready', async () => {
       body: commandes
     });
     console.log('✅ Commande /creer-embed enregistrée !');
+    console.log('Client ID détecté :', process.env.CLIENT_ID_PWR);
   } catch (err) {
     console.error('❌ Erreur REST :', err);
   }
