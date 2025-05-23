@@ -20,40 +20,54 @@ client.once('ready', async () => {
 
   const commands = [
     new SlashCommandBuilder()
-  .setName('creer-embed')
-  .setDescription('Crée un embed de consommation pour une entreprise')
-  .addStringOption(opt =>
-    opt.setName('entreprise')
-      .setDescription('Nom de l’entreprise')
-      .setRequired(true)
-      .addChoices(
-        { name: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝', value: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝' },
-        { name: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬', value: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬' },
-        { name: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥', value: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥' },
-        { name: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭', value: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭' }
+      .setName('creer-embed')
+      .setDescription('Crée un embed de consommation pour une entreprise')
+      .addStringOption(opt =>
+        opt.setName('entreprise')
+          .setDescription('Nom de l’entreprise')
+          .setRequired(true)
+          .addChoices(
+            { name: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝', value: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝' },
+            { name: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬', value: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬' },
+            { name: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥', value: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥' },
+            { name: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭', value: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭' }
+          )
       )
-  )
-  .addStringOption(opt =>
-    opt.setName('couleur')
-      .setDescription('Couleur de l\'embed')
-      .setRequired(true)
-      .addChoices(
-        { name: 'Rouge', value: 'rouge' },
-        { name: 'Orange', value: 'orange' },
-        { name: 'Vert', value: 'vert' },
-        { name: 'Bleu', value: 'bleu' }
+      .addStringOption(opt =>
+        opt.setName('couleur')
+          .setDescription('Couleur de l\'embed')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Rouge', value: 'rouge' },
+            { name: 'Orange', value: 'orange' },
+            { name: 'Vert', value: 'vert' },
+            { name: 'Bleu', value: 'bleu' }
+          )
       )
-  )
-  .addIntegerOption(opt =>
-    opt.setName('objectif_litre')
-      .setDescription('Objectif en litres (ex: 10000)')
-      .setRequired(true)
-  )
-  .toJSON()
+      .addIntegerOption(opt =>
+        opt.setName('objectif_litre')
+          .setDescription('Objectif en litres (ex: 10000)')
+          .setRequired(true)
+      )
+      .toJSON()
   ];
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  await rest.put(Routes.applicationGuildCommands(client.user.id, GUILD_ID), { body: commands });
+
+  // 🧹 Supprimer les anciennes commandes /creer-embed
+  const guild = await client.guilds.fetch(GUILD_ID);
+  const existingCommands = await guild.commands.fetch();
+  for (const cmd of existingCommands.values()) {
+    if (cmd.name === 'creer-embed') {
+      await guild.commands.delete(cmd.id);
+      console.log('🧹 Ancienne commande /creer-embed supprimée');
+    }
+  }
+
+  await rest.put(
+    Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+    { body: commands }
+  );
 
   console.log('✅ Commande /creer-embed enregistrée');
 });
@@ -79,7 +93,7 @@ client.on('interactionCreate', async (interaction) => {
 ━━━━━━━━━━━━━━━━━━
 `)
     .setColor(couleurs[couleur] ?? 0x0099FF)
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png') // Logo goutte bleue
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
     .setTimestamp();
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
@@ -87,8 +101,9 @@ client.on('interactionCreate', async (interaction) => {
 
   await interaction.reply({
     content: `✅ Embed pour **${entreprise}** envoyé avec succès !`,
-    flags: 1 << 6 // ephemeral
+    flags: 1 << 6
   });
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
