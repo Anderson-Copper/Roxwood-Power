@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuild
 require('dotenv').config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 const GUILD_ID = '1363243114822766763';
@@ -16,7 +16,7 @@ const couleurs = {
 };
 
 client.once('ready', async () => {
-  console.log(`✅ Bot consommation connecté en tant que ${client.user.tag}`);
+  console.log(`✅ Bot consommation connecté : ${client.user.tag}`);
 
   const commands = [
     new SlashCommandBuilder()
@@ -54,22 +54,15 @@ client.once('ready', async () => {
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
 
-  // 🧹 Supprimer les anciennes commandes /creer-embed
-  const guild = await client.guilds.fetch(GUILD_ID);
-  const existingCommands = await guild.commands.fetch();
-  for (const cmd of existingCommands.values()) {
-    if (cmd.name === 'creer-embed') {
-      await guild.commands.delete(cmd.id);
-      console.log('🧹 Ancienne commande /creer-embed supprimée');
-    }
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID),
+      { body: commands }
+    );
+    console.log('✅ Commande /creer-embed enregistrée');
+  } catch (err) {
+    console.error('❌ Erreur enregistrement slash command :', err);
   }
-
-  await rest.put(
-    Routes.applicationGuildCommands(client.user.id, GUILD_ID),
-    { body: commands }
-  );
-
-  console.log('✅ Commande /creer-embed enregistrée');
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -100,7 +93,7 @@ client.on('interactionCreate', async (interaction) => {
   await channel.send({ embeds: [embed] });
 
   await interaction.reply({
-    content: `✅ Embed pour **${entreprise}** envoyé avec succès !`,
+    content: `✅ Embed envoyé pour **${entreprise}**`,
     flags: 1 << 6
   });
 });
