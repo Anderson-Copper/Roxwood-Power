@@ -1,12 +1,43 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const GUILD_ID = '1363243114822766763';
 const CONSO_CHANNEL_ID = '1374906428418031626';
+
+const commandes = [
+  new SlashCommandBuilder()
+    .setName('creer-embed')
+    .setDescription('Crée un embed de consommation pour une entreprise')
+    .addStringOption(option =>
+      option.setName('entreprise')
+        .setDescription('Nom de l’entreprise')
+        .setRequired(true)
+        .addChoices(
+          { name: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝', value: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝' },
+          { name: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬', value: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬' },
+          { name: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥', value: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥' },
+          { name: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭', value: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭' }
+        )
+    )
+    .addStringOption(option =>
+      option.setName('couleur')
+        .setDescription('Couleur')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Rouge', value: 'rouge' },
+          { name: 'Orange', value: 'orange' },
+          { name: 'Vert', value: 'vert' },
+          { name: 'Bleu', value: 'bleu' }
+        )
+    )
+    .addIntegerOption(option =>
+      option.setName('objectif_litre')
+        .setDescription('Objectif de litres')
+        .setRequired(true)
+    )
+].map(command => command.toJSON());
 
 const couleurs = {
   rouge: 0xFF0000,
@@ -16,51 +47,17 @@ const couleurs = {
 };
 
 client.once('ready', async () => {
-  console.log(`✅ Bot consommation connecté : ${client.user.tag}`);
-
-  const commands = [
-    new SlashCommandBuilder()
-      .setName('creer-embed')
-      .setDescription('Crée un embed de consommation pour une entreprise')
-      .addStringOption(opt =>
-        opt.setName('entreprise')
-          .setDescription('Nom de l’entreprise')
-          .setRequired(true)
-          .addChoices(
-            { name: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝', value: '𝐋𝐓𝐃 𝐑𝐨𝐱𝐰𝐨𝐨𝐝' },
-            { name: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬', value: '𝐋𝐓𝐃 𝐒𝐚𝐧𝐝𝐲 𝐒𝐡𝐨𝐫𝐞𝐬' },
-            { name: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥', value: '𝐋𝐓𝐃 𝐋𝐢𝐭𝐭𝐥𝐞 𝐒𝐞𝐨𝐮𝐥' },
-            { name: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭', value: '𝐋𝐓𝐃 𝐆𝐫𝐨𝐯𝐞 𝐒𝐭𝐫𝐞𝐞𝐭' }
-          )
-      )
-      .addStringOption(opt =>
-        opt.setName('couleur')
-          .setDescription('Couleur de l\'embed')
-          .setRequired(true)
-          .addChoices(
-            { name: 'Rouge', value: 'rouge' },
-            { name: 'Orange', value: 'orange' },
-            { name: 'Vert', value: 'vert' },
-            { name: 'Bleu', value: 'bleu' }
-          )
-      )
-      .addIntegerOption(opt =>
-        opt.setName('objectif_litre')
-          .setDescription('Objectif en litres (ex: 10000)')
-          .setRequired(true)
-      )
-  ].map(cmd => cmd.toJSON());
+  console.log(`✅ Bot connecté : ${client.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
 
   try {
-    await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID),
-      { body: commands }
-    );
-    console.log('✅ Commandes slash mises à jour');
-  } catch (error) {
-    console.error('❌ Erreur mise à jour des commandes slash :', error);
+    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID), {
+      body: commandes
+    });
+    console.log('✅ Commande /creer-embed enregistrée !');
+  } catch (err) {
+    console.error('❌ Erreur REST :', err);
   }
 });
 
@@ -82,7 +79,7 @@ client.on('interactionCreate', async interaction => {
 
 📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}
 ━━━━━━━━━━━━━━━━━━
-    `)
+`)
     .setColor(couleurs[couleur] ?? 0x0099FF)
     .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
     .setTimestamp();
