@@ -1,5 +1,5 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 require('dotenv').config();
+const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -49,8 +49,7 @@ client.once('ready', async () => {
           .setDescription('Objectif en litres (ex: 10000)')
           .setRequired(true)
       )
-      .toJSON()
-  ];
+  ].map(cmd => cmd.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
 
@@ -59,13 +58,13 @@ client.once('ready', async () => {
       Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID),
       { body: commands }
     );
-    console.log('✅ Commande /creer-embed enregistrée');
-  } catch (err) {
-    console.error('❌ Erreur enregistrement slash command :', err);
+    console.log('✅ Commandes slash mises à jour');
+  } catch (error) {
+    console.error('❌ Erreur mise à jour des commandes slash :', error);
   }
 });
 
-client.on('interactionCreate', async (interaction) => {
+client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== 'creer-embed') return;
 
@@ -78,13 +77,12 @@ client.on('interactionCreate', async (interaction) => {
     .setDescription(`
 ━━━━━━━━━━━━━━━━━━
 🏢 **Entreprise :** ${entreprise}
-
 💧 **Consommation actuelle :** \`0 L\`
 🎯 **Objectif de la semaine :** \`${objectif} L\`
 
 📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}
 ━━━━━━━━━━━━━━━━━━
-`)
+    `)
     .setColor(couleurs[couleur] ?? 0x0099FF)
     .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
     .setTimestamp();
@@ -94,7 +92,7 @@ client.on('interactionCreate', async (interaction) => {
 
   await interaction.reply({
     content: `✅ Embed envoyé pour **${entreprise}**`,
-    flags: 1 << 6
+    ephemeral: true
   });
 });
 
