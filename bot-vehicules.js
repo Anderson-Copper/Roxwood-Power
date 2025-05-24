@@ -106,32 +106,6 @@ async function resyncVehiclesFromChannels(channelIds = []) {
 client.once('ready', async () => {
   console.log(`🚗 Bot véhicules Roxwood actif en tant que ${client.user.tag}`);
 
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  const commands = [
-    new SlashCommandBuilder()
-      .setName('addvehicle')
-      .setDescription('Ajoute un véhicule')
-      .addStringOption(opt => opt.setName('nom').setDescription('Nom du véhicule').setRequired(true))
-      .addStringOption(opt => opt.setName('id').setDescription('ID du véhicule').setRequired(true))
-      .addStringOption(opt => opt.setName('plaque').setDescription("Plaque d'immatriculation").setRequired(true))
-      .addAttachmentOption(opt => opt.setName('image').setDescription('Image PNG du véhicule').setRequired(true)),
-    new SlashCommandBuilder().setName('listvehicles').setDescription('Affiche la liste des véhicules'),
-    new SlashCommandBuilder()
-      .setName('removevehicle')
-      .setDescription('Supprime un véhicule existant')
-      .addStringOption(opt => opt.setName('id').setDescription('ID du véhicule à supprimer').setRequired(true)),
-    new SlashCommandBuilder()
-      .setName('reloadvehicles')
-      .setDescription('Recharge tous les véhicules depuis les salons définis')
-  ].map(cmd => cmd.toJSON());
-
-  try {
-    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, GUILD_ID), { body: commands });
-    console.log('✅ Commandes slash mises à jour');
-  } catch (error) {
-    console.error('❌ Erreur mise à jour des commandes slash :', error);
-  }
-
   await resyncVehiclesFromChannels([
     '1374865698882453596',
     '1374884208924692562',
