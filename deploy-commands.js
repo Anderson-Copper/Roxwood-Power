@@ -1,7 +1,10 @@
 require('dotenv').config();
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
-const commands = [
+const CLIENT_ID = process.env.CLIENT_ID_PWR;
+const GUILD_ID = '1363243114822766763';
+
+const commandes = [
   new SlashCommandBuilder()
     .setName('creer-embed')
     .setDescription('Crée un embed de consommation pour une entreprise')
@@ -16,26 +19,22 @@ const commands = [
           { name: 'LTD Grove Street', value: 'LTD Grove Street' }
         )
     )
-    .addStringOption(option =>
-      option.setName('couleur')
-        .setDescription('Couleur de l’embed')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Rouge', value: 'rouge' },
-          { name: 'Orange', value: 'orange' },
-          { name: 'Vert', value: 'vert' },
-          { name: 'Bleu', value: 'bleu' }
-        )
-    )
     .addIntegerOption(option =>
       option.setName('objectif_litre')
-        .setDescription('Objectif en litres')
+        .setDescription('Objectif de litres')
         .setRequired(true)
     )
-].map(command => command.toJSON());
+].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
 
-rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID_PWR, process.env.GUILD_ID_PWR), { body: commands })
-  .then(() => console.log('✅ Commandes slash enregistrées avec succès !'))
-  .catch(console.error);
+(async () => {
+  try {
+    console.log('🔁 Mise à jour des commandes slash...');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commandes });
+    console.log('✅ Commandes slash enregistrées avec succès !');
+  } catch (error) {
+    console.error('❌ Erreur mise à jour des commandes :', error);
+  }
+})();
+
