@@ -10,6 +10,8 @@ const client = new Client({
 // Variables principales
 const WELCOME_CHANNEL_ID = '1363243115397382156'; // #bienvenu
 const RULES_CHANNEL_ID = '1374827632402894888';   // #règlement
+const RENDEZVOUS_CHANNEL_ID = '1375636255420841984'; // #prise-de-rendez-vous
+const ROLE_REQUEST_CHANNEL_ID = '1374828781331681280'; // #demande-de-role
 const CITOYEN_ROLE_ID = '1375087663107018833';     // Rôle Citoyen
 
 client.once(Events.ClientReady, () => {
@@ -31,11 +33,11 @@ Vous entrez dans une **zone industrielle sécurisée et hautement dangereuse**.
 
 🏫 L'accès au site est restreint - **Agents autorisés uniquement**.
 
-📄 Consultez notre <#${1374827632402894888}> avant toute opération.
+📄 Consultez notre <#${RULES_CHANNEL_ID}> avant toute opération.
 
-💬 Pour nos partenaires, rendez-vous dans le salon **prise de rendez-vous** et <#${1374828781331681280}>.
+💬 Pour nos partenaires, rendez-vous dans <#${RENDEZVOUS_CHANNEL_ID}> et <#${ROLE_REQUEST_CHANNEL_ID}>.
         `)
-        .setImage('https://i.postimg.cc/dtfPd3wP/Chat-GPT-Image-24-mai-2025-02-41-24.png') // Remplace par une image personnalisée si souhaité
+        .setImage('https://i.postimg.cc/dtfPd3wP/Chat-GPT-Image-24-mai-2025-02-41-24.png')
         .setFooter({ text: 'Secrétaire Roxwood – Accueil des citoyens' });
 
     channel.send({ content: `Bienvenue ${member}!`, embeds: [embed] });
@@ -56,4 +58,3 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 module.exports = client;
-
