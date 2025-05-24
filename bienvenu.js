@@ -1,5 +1,5 @@
 // Script "bienvenu.js" - Secrétaire Roxwood PWR
-// Gère l'arrivée des nouveaux citoyens avec message d'accueil + validation du règlement
+// Gère l'accueil de chaque membre dans #bienvenu, même s'il est déjà venu
 
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, Events, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const client = new Client({
@@ -19,21 +19,22 @@ const RENDEZVOUS_CHANNEL_ID = '1375636255420841984'; // #prise-de-rendez-vous
 const ROLE_REQUEST_CHANNEL_ID = '1374828781331681280'; // #demande-de-role
 const CITOYEN_ROLE_ID = '1375087663107018833';     // Rôle Citoyen
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
     console.log(`Secrétaire Roxwood PWR opérationnelle en tant que ${client.user.tag}`);
-});
 
-// 🎉 Nouveau membre arrivant
-client.on(Events.GuildMemberAdd, async member => {
-    console.log(`🔹 Nouveau membre détecté : ${member.user.tag}`);
-
-    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    // Envoie le message à tous les membres présents (utile pour ceux qui rejoignent/reviennent)
+    const guild = await client.guilds.fetch(process.env.GUILD_ID_PWR);
+    const channel = guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (!channel) return;
 
-    const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle(`📢 Bienvenue ${member.user.username} chez Roxwood Power`)
-        .setDescription(`
+    const members = await guild.members.fetch();
+    for (const member of members.values()) {
+        if (member.user.bot) continue;
+
+        const embed = new EmbedBuilder()
+            .setColor(0x3498db)
+            .setTitle(`📢 Bienvenue ${member.user.username} chez Roxwood Power`)
+            .setDescription(`
 Vous entrez dans une **zone industrielle sécurisée et hautement dangereuse**.
 
 🔒 Respectez **scrupuleusement les protocoles** en vigueur pour garantir votre sécurité et celle d'autrui.
@@ -43,11 +44,13 @@ Vous entrez dans une **zone industrielle sécurisée et hautement dangereuse**.
 📄 Consultez notre <#${RULES_CHANNEL_ID}> avant toute opération.
 
 💬 Pour nos partenaires, rendez-vous dans <#${RENDEZVOUS_CHANNEL_ID}> et <#${ROLE_REQUEST_CHANNEL_ID}>.
-        `)
-        .setImage('https://i.postimg.cc/dtfPd3wP/Chat-GPT-Image-24-mai-2025-02-41-24.png')
-        .setFooter({ text: 'Secrétaire Roxwood – Accueil des citoyens' });
+            `)
+            .setImage('https://i.postimg.cc/dtfPd3wP/Chat-GPT-Image-24-mai-2025-02-41-24.png')
+            .setFooter({ text: 'Secrétaire Roxwood – Accueil des citoyens' });
 
-    channel.send({ content: `Bienvenue ${member}!`, embeds: [embed] });
+        await channel.send({ content: `Bienvenue ${member}!`, embeds: [embed] });
+        break; // retire ce break si tu veux l'envoyer à tous les membres (mais ça peut spammer)
+    }
 });
 
 // ✅ Interaction bouton validation règlement
