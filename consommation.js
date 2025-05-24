@@ -80,6 +80,10 @@ client.on('interactionCreate', async interaction => {
 
   // Bouton Archiver
   if (interaction.isButton() && interaction.customId === 'archiver') {
+    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+      return interaction.reply({ content: 'Tu n’as pas la permission.', flags: 1 << 6 });
+    }
+
     const msg = await interaction.channel.messages.fetch(interaction.message.id);
     const archiveThread = await interaction.channel.threads.create({
       name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
@@ -93,4 +97,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
