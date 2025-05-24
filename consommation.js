@@ -1,11 +1,8 @@
-// 📦 consommation.js (version complète avec bouton Archiver + archivage vendredi)
+// 📦 consommation.js (corrigé avec suppression du redeploiement, fix interaction et ephemeral)
 require('dotenv').config();
 const {
   Client,
   GatewayIntentBits,
-  SlashCommandBuilder,
-  Routes,
-  REST,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -15,8 +12,6 @@ const {
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
-const CLIENT_ID = process.env.CLIENT_ID_PWR;
-const GUILD_ID = '1363243114822766763';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 
@@ -57,7 +52,7 @@ client.on('interactionCreate', async interaction => {
   // Commande /creer-embed
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: 'Tu n’as pas la permission.', ephemeral: true });
+      return interaction.reply({ content: 'Tu n’as pas la permission.', flags: 1 << 6 });
     }
 
     const entreprise = interaction.options.getString('entreprise');
@@ -80,7 +75,7 @@ client.on('interactionCreate', async interaction => {
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
     await channel.send({ embeds: [embed], components: [row] });
-    await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
+    await interaction.reply({ content: `Embed créé pour ${entreprise}`, flags: 1 << 6 });
   }
 
   // Bouton Archiver
@@ -92,9 +87,10 @@ client.on('interactionCreate', async interaction => {
     });
 
     await archiveThread.send({ embeds: msg.embeds });
+    await interaction.reply({ content: 'Embed archivé avec succès.', flags: 1 << 6 });
     await msg.delete().catch(() => {});
-    await interaction.reply({ content: 'Embed archivé avec succès.', ephemeral: true });
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
