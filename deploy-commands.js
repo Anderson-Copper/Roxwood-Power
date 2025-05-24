@@ -67,6 +67,10 @@ const commands = [
 
 (async () => {
   try {
+    console.log('🧹 Suppression des commandes existantes...');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
+    console.log('🧽 Commandes précédentes supprimées.');
+
     console.log('🔁 Déploiement des commandes slash...');
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
     console.log('✅ Commandes slash enregistrées avec succès !');
