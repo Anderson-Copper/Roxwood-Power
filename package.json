@@ -1,15 +1,15 @@
 {
   "name": "roxwood-pwr-bot",
   "version": "1.0.0",
-  "description": "Bot Discord Roxwood PWR pour la gestion des véhicules et interactions",
+  "description": "Bot Discord Roxwood PWR pour la gestion des véhicules, la consommation et l’accueil des citoyens.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "npx concurrently \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\"",
+    "start": "npx concurrently \"node deploy-commands.js\" \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node bienvenu.js\"",
     "dev": "nodemon index.js",
     "bienvenu": "node bienvenu.js"
   },
-  "keywords": ["discord", "bot", "roxwood", "vehicules"],
+  "keywords": ["discord", "bot", "roxwood", "vehicules", "citoyens", "règlement"],
   "author": "Roxwood",
   "license": "MIT",
   "dependencies": {
