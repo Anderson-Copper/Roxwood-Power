@@ -3,7 +3,12 @@
 
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, Events, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ],
     partials: [Partials.GuildMember],
 });
 
@@ -20,6 +25,8 @@ client.once(Events.ClientReady, () => {
 
 // 🎉 Nouveau membre arrivant
 client.on(Events.GuildMemberAdd, async member => {
+    console.log(`🔹 Nouveau membre détecté : ${member.user.tag}`);
+
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (!channel) return;
 
@@ -58,4 +65,3 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 module.exports = client;
-
