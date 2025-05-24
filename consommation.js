@@ -1,4 +1,4 @@
-// 📦 consommation.js (corrigé avec suppression du redeploiement, fix interaction et ephemeral)
+// 📦 consommation.js (corrigé avec protection interaction + suppression erreur 40060)
 require('dotenv').config();
 const {
   Client,
@@ -36,12 +36,12 @@ client.once('ready', async () => {
       });
 
       const messages = await channel.messages.fetch({ limit: 100 });
-      messages.forEach(async msg => {
+      for (const msg of messages.values()) {
         if (msg.embeds.length) {
           await thread.send({ embeds: msg.embeds });
           await msg.delete().catch(() => {});
         }
-      });
+      }
     }
   }, 60 * 1000);
 });
@@ -91,10 +91,11 @@ client.on('interactionCreate', async interaction => {
     });
 
     await archiveThread.send({ embeds: msg.embeds });
-    await interaction.reply({ content: 'Embed archivé avec succès.', flags: 1 << 6 });
+    await interaction.deferUpdate(); // ✅ évite le double reply
     await msg.delete().catch(() => {});
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
