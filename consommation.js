@@ -1,4 +1,4 @@
-// 📦 consommation.js (corrigé avec protection interaction + suppression erreur 40060)
+// 📦 consommation.js (corrigé avec archivage sécurisé et message dans le thread)
 require('dotenv').config();
 const {
   Client,
@@ -36,12 +36,12 @@ client.once('ready', async () => {
       });
 
       const messages = await channel.messages.fetch({ limit: 100 });
-      for (const msg of messages.values()) {
+      messages.forEach(async msg => {
         if (msg.embeds.length) {
           await thread.send({ embeds: msg.embeds });
           await msg.delete().catch(() => {});
         }
-      }
+      });
     }
   }, 60 * 1000);
 });
@@ -81,21 +81,27 @@ client.on('interactionCreate', async interaction => {
   // Bouton Archiver
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: 'Tu n’as pas la permission.', flags: 1 << 6 });
+      return interaction.reply({ content: '🚫 Tu n’as pas la permission.', flags: 1 << 6 });
     }
 
-    const msg = await interaction.channel.messages.fetch(interaction.message.id);
-    const archiveThread = await interaction.channel.threads.create({
-      name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-    });
+    await interaction.deferUpdate();
 
-    await archiveThread.send({ embeds: msg.embeds });
-    await interaction.deferUpdate(); // ✅ évite le double reply
-    await msg.delete().catch(() => {});
+    try {
+      const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const archiveThread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
+
+      await archiveThread.send({ embeds: msg.embeds });
+      await archiveThread.send({ content: `✅ Embed archivé par <@${interaction.user.id}>.` });
+      await msg.delete().catch(() => {});
+      console.log(`🗂️ Embed archivé par ${interaction.user.tag} dans ${archiveThread.name}`);
+    } catch (err) {
+      console.error('❌ Erreur pendant l’archivage :', err);
+    }
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
 
