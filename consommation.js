@@ -30,44 +30,6 @@ const couleurs = {
 client.once('ready', async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName('creer-embed')
-      .setDescription('Crée un embed de consommation pour une entreprise')
-      .addStringOption(option =>
-        option.setName('entreprise')
-          .setDescription('Nom de l’entreprise')
-          .setRequired(true)
-          .addChoices(
-            { name: 'LTD Roxwood', value: 'LTD Roxwood' },
-            { name: 'LTD Sandy Shores', value: 'LTD Sandy Shores' },
-            { name: 'LTD Little Seoul', value: 'LTD Little Seoul' },
-            { name: 'LTD Grove Street', value: 'LTD Grove Street' }
-          )
-      )
-      .addStringOption(option =>
-        option.setName('couleur')
-          .setDescription('Couleur')
-          .setRequired(true)
-          .addChoices(
-            { name: 'Rouge', value: 'rouge' },
-            { name: 'Orange', value: 'orange' },
-            { name: 'Vert', value: 'vert' },
-            { name: 'Bleu', value: 'bleu' }
-          )
-      )
-      .addIntegerOption(option =>
-        option.setName('objectif_litre')
-          .setDescription('Objectif de litres')
-          .setRequired(true)
-      )
-  ].map(cmd => cmd.toJSON());
-
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-
-  console.log('✅ Commande /creer-embed enregistrée');
-
   // Archive auto vendredi 23:59
   setInterval(async () => {
     const now = new Date();
