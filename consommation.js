@@ -1,11 +1,7 @@
-// 📦 consommation.js (avec gestion automatique des ajustements + dépôts + archives)
 require('dotenv').config();
 const {
   Client,
   GatewayIntentBits,
-  SlashCommandBuilder,
-  Routes,
-  REST,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -16,8 +12,6 @@ const fs = require('fs');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-const CLIENT_ID = process.env.CLIENT_ID_PWR;
-const GUILD_ID = '1363243114822766763';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
 const LOG_DEPOT_ID = '1375152581307007056';
@@ -52,27 +46,6 @@ function generateEmbed(entreprise, objectif, actuel = 0) {
 client.once('ready', async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
 
-  const commands = [
-    new SlashCommandBuilder()
-      .setName('creer-embed')
-      .setDescription('Crée un embed de consommation pour une entreprise')
-      .addStringOption(option =>
-        option.setName('entreprise')
-          .setDescription('Nom de l’entreprise')
-          .setRequired(true)
-          .addChoices(...Object.keys(couleurs).map(e => ({ name: e, value: e })))
-      )
-      .addIntegerOption(option =>
-        option.setName('objectif_litre')
-          .setDescription('Objectif de litres')
-          .setRequired(true)
-      )
-  ].map(cmd => cmd.toJSON());
-
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
-  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-  console.log('✅ Commande /creer-embed enregistrée');
-
   // ⏰ Archive auto vendredi 23:59 + recréation samedi 00:00
   setInterval(async () => {
     const now = new Date();
@@ -99,7 +72,10 @@ client.once('ready', async () => {
       for (const [entreprise, { objectif }] of Object.entries(data)) {
         data[entreprise].actuel = 0;
         const embed = generateEmbed(entreprise, objectif, 0);
-        await channel.send({ embeds: [embed] });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+        );
+        await channel.send({ embeds: [embed], components: [row] });
       }
       saveData();
     }
@@ -115,6 +91,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     const entreprise = interaction.options.getString('entreprise');
+    const couleur = interaction.options.getString('couleur');
     const objectif = interaction.options.getInteger('objectif_litre');
     data[entreprise] = { objectif, actuel: 0 };
     saveData();
