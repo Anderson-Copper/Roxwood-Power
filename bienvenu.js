@@ -31,11 +31,11 @@ Vous entrez dans une **zone industrielle sécurisée et hautement dangereuse**.
 
 🏫 L'accès au site est restreint - **Agents autorisés uniquement**.
 
-📄 Consultez notre <#${RULES_CHANNEL_ID}> avant toute opération.
+📄 Consultez notre <#${1374827632402894888}> avant toute opération.
 
-💬 Pour nos partenaires, rendez-vous dans les salons **prise de rendez-vous** et **demande de rôle**.
+💬 Pour nos partenaires, rendez-vous dans le salon **prise de rendez-vous** et <#${1374828781331681280}>.
         `)
-        .setImage('https://i.imgur.com/2nCt3Sbl.jpg') // Remplace par une image personnalisée si souhaité
+        .setImage('https://i.postimg.cc/dtfPd3wP/Chat-GPT-Image-24-mai-2025-02-41-24.png') // Remplace par une image personnalisée si souhaité
         .setFooter({ text: 'Secrétaire Roxwood – Accueil des citoyens' });
 
     channel.send({ content: `Bienvenue ${member}!`, embeds: [embed] });
