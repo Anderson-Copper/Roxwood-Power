@@ -5,8 +5,9 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "npx concurrently \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\"",
-    "dev": "nodemon index.js"
+    "start": "npx concurrently \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node bienvenu.js\"",
+    "dev": "nodemon index.js",
+    "bienvenu": "node bienvenu.js"
   },
   "keywords": ["discord", "bot", "roxwood", "vehicules"],
   "author": "Roxwood",
@@ -17,6 +18,7 @@
     "node-fetch": "^2.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+    "concurrently": "^8.2.0"
   }
 }
