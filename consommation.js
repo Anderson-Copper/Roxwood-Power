@@ -1,4 +1,4 @@
-// 📦 consommation.js (version complète avec gestion des ajustements, dépôts, création et archivage)
+// 📦 consommation.js (version avec détection d'embed, texte manuel et logs)
 require('dotenv').config();
 const {
   Client,
@@ -21,6 +21,7 @@ const client = new Client({
 const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
 const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
+const LOG_CHANNEL_ID = '1375153166424866867';
 const ROLE_ADMIN_ID = '1375058990152548372';
 
 const couleurs = {
@@ -79,9 +80,12 @@ client.on('messageCreate', async message => {
 
     await embedMessage.edit({ embeds: [embed], components: [row] });
     console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
+
+    const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+    await logChannel.send(`🔧 Objectif mis à jour pour ${entreprise} → ${objectif} L`);
   }
 
-   // 🛢️ Dépôt via texte manuel (par rôle développeur)
+  // 🛢️ Dépôt via texte manuel
   if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Dépot de produit')) {
     const entrepriseMatch = message.content.match(/LTD .+/);
     const quantiteMatch = message.content.match(/Quantité déposée ?: (\d+)/);
@@ -116,6 +120,9 @@ client.on('messageCreate', async message => {
 
     await embedMessage.edit({ embeds: [embed], components: [row] });
     console.log(`📥 Dépôt manuel traité pour ${entreprise} : ${ajout}L.`);
+
+    const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+    await logChannel.send(`📥 Dépôt manuel détecté : ${entreprise} +${ajout} L`);
   }
 
   // 🛢️ Dépôt via embed
@@ -155,6 +162,9 @@ client.on('messageCreate', async message => {
 
     await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
     console.log(`📦 Dépôt via embed traité pour ${entreprise} : ${ajout}L.`);
+
+    const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
+    await logChannel.send(`📦 Dépôt embed détecté : ${entreprise} +${ajout} L`);
   }
 });
 
