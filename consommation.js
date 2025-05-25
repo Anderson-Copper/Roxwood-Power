@@ -118,6 +118,39 @@ client.on('messageCreate', async message => {
   }
 });
 
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'creer-embed') return;
+
+  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+    return interaction.reply({ content: 'Tu n’as pas la permission.', ephemeral: true });
+  }
+
+  const entreprise = interaction.options.getString('entreprise');
+  const couleur = interaction.options.getString('couleur');
+  const objectif = interaction.options.getInteger('objectif_litre');
+
+  objectifMap[entreprise] = objectif;
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📊 Suivi de consommation - ${entreprise}`)
+    .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`0 L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('archiver')
+      .setLabel('🗂 Archiver')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  await channel.send({ embeds: [embed], components: [row] });
+  await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
+});
+
 client.login(process.env.DISCORD_TOKEN_PWR);
 
 
