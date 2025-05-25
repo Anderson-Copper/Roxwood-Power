@@ -121,7 +121,7 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: 'Tu n’as pas la permission.', ephemeral: true });
+      return interaction.reply({ content: 'Tu n’as pas la permission.', flags: 64 });
     }
 
     const entreprise = interaction.options.getString('entreprise');
@@ -143,7 +143,7 @@ client.on('interactionCreate', async interaction => {
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
     await channel.send({ embeds: [embed], components: [row] });
-    await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
+    await interaction.reply({ content: `Embed créé pour ${entreprise}`, flags: 64 });
   }
 
  if (interaction.isButton() && interaction.customId === 'archiver') {
@@ -151,7 +151,7 @@ client.on('interactionCreate', async interaction => {
   if (interaction.replied || interaction.deferred) return;
 
   try {
-    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    await interaction.deferReply({ flags: 64 }).catch(() => {});
 
     const msg = await interaction.channel.messages.fetch(interaction.message.id);
     const archiveThread = await interaction.channel.threads.create({
@@ -165,7 +165,7 @@ client.on('interactionCreate', async interaction => {
   } catch (err) {
     console.error('❌ Erreur d’archivage :', err);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
     }
   }
 }
