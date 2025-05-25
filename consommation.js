@@ -151,6 +151,28 @@ client.on('interactionCreate', async interaction => {
   await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
 });
 
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isButton()) return;
+  if (interaction.customId !== 'archiver') return;
+
+  try {
+    const msg = await interaction.channel.messages.fetch(interaction.message.id);
+    const archiveThread = await interaction.channel.threads.create({
+      name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+
+    await archiveThread.send({ embeds: msg.embeds });
+    await msg.delete().catch(() => {});
+    await interaction.reply({ content: 'Embed archivé avec succès.', ephemeral: true });
+  } catch (err) {
+    console.error('❌ Erreur d’archivage :', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true });
+    }
+  }
+});
+
 client.login(process.env.DISCORD_TOKEN_PWR);
 
 
