@@ -89,7 +89,7 @@ client.on('messageCreate', async message => {
     console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
   }
 
-  // 🛢️ Dépôt réel : détecte "Dépot de produit", nom LTD et quantité
+  // 🛢️ Dépôt réel : format complet
   if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Dépot de produit')) {
     const entrepriseMatch = message.content.match(/LTD [^\n]+/);
     const quantiteMatch = message.content.match(/Quantité déposée? ?: (\d+)/);
@@ -126,6 +126,45 @@ client.on('messageCreate', async message => {
 
     await embedMessage.edit({ embeds: [embed], components: [row] });
     console.log(`📦 Dépôt traité pour ${entreprise} : +${ajout}L → ${nouveauVolume}L`);
+  }
+
+  // 🛢️ Dépôt format court : "LTD...\nQuantité déposé\nX"
+  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
+    const entrepriseMatch = message.content.match(/LTD [^\n]+/);
+    const quantiteMatch = message.content.match(/Quantité déposé\s*\n?(\d+)/i);
+    if (!entrepriseMatch || !quantiteMatch) return;
+
+    const entreprise = entrepriseMatch[0].trim();
+    const ajout = parseInt(quantiteMatch[1]) * 15;
+    const couleur = LTD_couleurs[entreprise];
+    if (!couleur) return;
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+    if (!embedMessage) return;
+
+    const oldEmbed = embedMessage.embeds[0];
+    const volumeMatch = oldEmbed.description.match(/\*\*(\d+) L\*\*/);
+    const objectifMatch = oldEmbed.description.match(/\/ (\d+) L/);
+    const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+    const nouveauVolume = actuel + ajout;
+    const percentBar = generateProgressBar(nouveauVolume, objectif);
+
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**${nouveauVolume} L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await embedMessage.edit({ embeds: [embed], components: [row] });
+    console.log(`📥 Dépôt format court → ${entreprise} : +${ajout}L`);
   }
 });
 
@@ -183,5 +222,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
-
