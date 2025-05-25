@@ -37,6 +37,8 @@ const LTD_couleurs = {
   'LTD Roxwood': 'bleu'
 };
 
+const objectifMap = {}; // 🔁 Mémoire locale des objectifs par LTD
+
 client.once('ready', () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
 });
@@ -52,6 +54,8 @@ client.on('messageCreate', async message => {
     const objectif = parseInt(quantiteMatch[1]);
     const couleur = LTD_couleurs[entreprise];
     if (!couleur) return;
+
+    objectifMap[entreprise] = objectif; // 🧠 Mémorise l’objectif
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
     const messages = await channel.messages.fetch({ limit: 50 });
@@ -77,66 +81,43 @@ client.on('messageCreate', async message => {
     console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
   }
 
- // 🛢️ Dépôt - Embed OU texte brut par développeur
-if (message.channelId === LIAISON_DEPOTS_ID) {
-  let entreprise = null;
-  let bidons = null;
+  // 🛢️ Dépôt
+  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Livraison de')) {
+    const entrepriseMatch = message.content.match(/pour (LTD [^\n]+)/);
+    const bidonsMatch = message.content.match(/Livraison de (\d+) bidon/);
+    if (!entrepriseMatch || !bidonsMatch) return;
 
-  // Cas 1 : Embed de dépôt structuré
-  if (message.embeds.length > 0) {
-    const embed = message.embeds[0];
-    const entrepriseLine = embed.description?.split('\n').find(line => line.includes('LTD'));
-    const quantiteField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'));
-    if (entrepriseLine && quantiteField) {
-      entreprise = entrepriseLine.trim();
-      bidons = parseInt(quantiteField.value.trim());
-    }
+    const entreprise = entrepriseMatch[1];
+    const ajout = parseInt(bidonsMatch[1]) * 15;
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(entreprise));
+    if (!embedMessage) return;
+
+    const oldEmbed = embedMessage.embeds[0];
+    const volumeMatch = oldEmbed.description.match(/Volume livré : `?(\d+) L`?/);
+    const objectifMatch = oldEmbed.description.match(/Objectif : `?(\d+) L`?/);
+    const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+    const couleur = LTD_couleurs[entreprise];
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📊 Suivi de consommation - ${entreprise}`)
+      .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`${actuel + ajout} L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await embedMessage.edit({ embeds: [embed], components: [row] });
+    console.log(`📦 Dépôt ajouté pour ${entreprise} : ${ajout}L.`);
   }
-
-  // Cas 2 : Message texte libre par dev
-  if (!bidons && message.content.includes('Dépot de produit')) {
-    const lignes = message.content.split('\n');
-    const ligneLTD = lignes.find(line => line.includes('LTD'));
-    const ligneQuantite = lignes.find(line => line.toLowerCase().includes('quantité déposé'));
-
-    if (ligneLTD && ligneQuantite) {
-      entreprise = ligneLTD.trim();
-      const match = ligneQuantite.match(/(\d+)/);
-      if (match) bidons = parseInt(match[1]);
-    }
-  }
-
-  if (!entreprise || isNaN(bidons)) return;
-  const ajout = bidons * 15;
-  const couleur = LTD_couleurs[entreprise];
-  if (!couleur) return;
-
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  const messages = await channel.messages.fetch({ limit: 50 });
-  const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(entreprise));
-  if (!embedMessage) return;
-
-  const oldEmbed = embedMessage.embeds[0];
-  const volumeMatch = oldEmbed.description.match(/Volume livré : `?(\d+) L`?/);
-  const objectifMatch = oldEmbed.description.match(/Objectif : `?(\d+) L`?/);
-  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
-
-  const embedUpdate = new EmbedBuilder()
-    .setTitle(`📊 Suivi de consommation - ${entreprise}`)
-    .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`${actuel + ajout} L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
-
-  await embedMessage.edit({ embeds: [embedUpdate], components: [row] });
-  console.log(`📦 Dépôt reconnu pour ${entreprise} : ${bidons} bidons (${ajout} L).`);
-}
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
