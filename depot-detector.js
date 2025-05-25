@@ -1,4 +1,4 @@
-// 📦 depot-detector.js (multi-LTD dynamique corrigé)
+// 📦 depot-detector.js (nouvelle version avec barre de progression)
 require('dotenv').config();
 const {
   Client,
@@ -35,6 +35,13 @@ const LTD_couleurs = {
 };
 
 const objectifMap = {}; // Mémoire persistante locale pour éviter l'écrasement
+const volumeMap = {}; // Pour stocker volume livré par LTD
+
+function generateProgressBar(current, max, length = 20) {
+  const filled = Math.round((current / max) * length);
+  const empty = length - filled;
+  return '▰'.repeat(filled) + '▱'.repeat(empty);
+}
 
 client.once('ready', () => {
   console.log('🧪 Bot dépôt prêt :', client.user.tag);
@@ -48,29 +55,28 @@ client.on('messageCreate', async message => {
   const messages = await consoChannel.messages.fetch({ limit: 50 });
 
   for (const entreprise in LTD_couleurs) {
-    const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(entreprise));
+    const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
     if (!embedMessage) continue;
 
     const oldEmbed = embedMessage.embeds[0];
-    const volumeMatch = oldEmbed.description.match(/Volume livré\s*:\s*`?(\d+) L`?/);
-    const objectifMatch = oldEmbed.description.match(/Objectif\s*:\s*`?(\d+) L`?/);
+    const desc = oldEmbed.description || '';
+    const match = desc.match(/\*\*(\\d+) L\*\*/);
+    const objectifMatch = desc.match(/\/ (\\d+) L/);
 
-    const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const actuel = match ? parseInt(match[1]) : 0;
     const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[entreprise] ?? 0);
 
-    // On sauvegarde l’objectif dans la map locale s’il est trouvé
-    if (objectifMatch) {
-      objectifMap[entreprise] = objectif;
-    }
-
+    objectifMap[entreprise] = objectif;
     const total = actuel + 15;
+    volumeMap[entreprise] = total;
+
+    const percentBar = generateProgressBar(total, objectif);
     const couleur = LTD_couleurs[entreprise];
 
     const updatedEmbed = new EmbedBuilder()
-      .setTitle(`📊 Suivi de consommation - ${entreprise}`)
-      .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`${total} L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
+      .setTitle(entreprise)
+      .setDescription(`\n**${total} L** / ${objectif} L\n${percentBar}`)
       .setColor(couleurs[couleur])
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -79,9 +85,10 @@ client.on('messageCreate', async message => {
 
     await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
     console.log(`✅ Volume mis à jour pour ${entreprise} : +15L → Total ${total}L (objectif conservé à ${objectif}L)`);
-    break; // un seul LTD à la fois
+    break;
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
