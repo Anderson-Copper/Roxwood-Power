@@ -19,6 +19,7 @@ const client = new Client({
 });
 
 const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
+const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 
@@ -49,44 +50,83 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async message => {
-  if (message.channelId !== LIAISON_AJUSTEMENT_ID) return;
-  if (!message.content.includes('Ajustement demandé')) return;
+  // 🔧 Ajustement
+  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
+    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
+    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
+    if (!entrepriseMatch || !quantiteMatch) return;
 
-  const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
-  const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
-  if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[1];
+    const objectif = parseInt(quantiteMatch[1]);
+    const couleur = LTD_couleurs[entreprise];
+    if (!couleur) return;
 
-  const entreprise = entrepriseMatch[1];
-  const objectif = parseInt(quantiteMatch[1]);
-  const couleur = LTD_couleurs[entreprise];
-  if (!couleur) return;
+    objectifMap[entreprise] = objectif;
 
-  objectifMap[entreprise] = objectif;
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+    if (!embedMessage) return;
 
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  const messages = await channel.messages.fetch({ limit: 50 });
-  const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
-  if (!embedMessage) return;
+    const oldEmbed = embedMessage.embeds[0];
+    const desc = oldEmbed.description || '';
+    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const percentBar = generateProgressBar(volume, objectif);
 
-  const oldEmbed = embedMessage.embeds[0];
-  const desc = oldEmbed.description || '';
-  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-  const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const percentBar = generateProgressBar(volume, objectif);
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**${volume} L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
 
-  const embed = new EmbedBuilder()
-    .setTitle(entreprise)
-    .setDescription(`\n**${volume} L** / ${objectif} L\n${percentBar}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
+    await embedMessage.edit({ embeds: [embed], components: [row] });
+    console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
+  }
 
-  await embedMessage.edit({ embeds: [embed], components: [row] });
-  console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
+  // 🛢️ Dépôt réel : détecte "Dépot de produit", nom LTD et quantité
+  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Dépot de produit')) {
+    const entrepriseMatch = message.content.match(/LTD [^\n]+/);
+    const quantiteMatch = message.content.match(/Quantité déposée? ?: (\d+)/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+
+    const entreprise = entrepriseMatch[0];
+    const ajout = parseInt(quantiteMatch[1]) * 15;
+    const couleur = LTD_couleurs[entreprise];
+    if (!couleur) return;
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+    if (!embedMessage) return;
+
+    const oldEmbed = embedMessage.embeds[0];
+    const volumeMatch = oldEmbed.description.match(/\*\*(\d+) L\*\*/);
+    const objectifMatch = oldEmbed.description.match(/\/ (\d+) L/);
+    const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+    const nouveauVolume = actuel + ajout;
+    const percentBar = generateProgressBar(nouveauVolume, objectif);
+
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**${nouveauVolume} L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await embedMessage.edit({ embeds: [embed], components: [row] });
+    console.log(`📦 Dépôt traité pour ${entreprise} : +${ajout}L → ${nouveauVolume}L`);
+  }
 });
 
 client.on('interactionCreate', async interaction => {
@@ -143,4 +183,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
