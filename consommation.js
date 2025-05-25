@@ -146,26 +146,28 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
   }
 
-  if (interaction.isButton() && interaction.customId === 'archiver') {
-    try {
-      await interaction.deferReply({ ephemeral: true });
+ if (interaction.isButton() && interaction.customId === 'archiver') {
+  if (interaction.replied || interaction.deferred) return;
 
-      const msg = await interaction.channel.messages.fetch(interaction.message.id);
-      const archiveThread = await interaction.channel.threads.create({
-        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-      });
+  try {
+    await interaction.deferReply({ ephemeral: true });
 
-      await archiveThread.send({ embeds: msg.embeds });
-      await msg.delete().catch(() => {});
-      await interaction.editReply({ content: 'Embed archivé avec succès.' });
-    } catch (err) {
-      console.error('❌ Erreur d’archivage :', err);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true });
-      }
+    const msg = await interaction.channel.messages.fetch(interaction.message.id);
+    const archiveThread = await interaction.channel.threads.create({
+      name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+
+    await archiveThread.send({ embeds: msg.embeds });
+    await msg.delete().catch(() => {});
+    await interaction.editReply({ content: 'Embed archivé avec succès.' });
+  } catch (err) {
+    console.error('❌ Erreur d’archivage :', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true });
     }
   }
+}
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
