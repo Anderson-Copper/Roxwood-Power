@@ -15,6 +15,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
 const ROLE_ADMIN_ID = '1374863891296682185';
+const USER_ID_AUTORISE = '1375516715026485268';
 
 const couleurs = {
   rouge: 0xFF0000,
@@ -104,18 +105,23 @@ client.on('interactionCreate', async interaction => {
 
 // 🎯 Écoute des ajustements dans le salon LIAISON
 client.on('messageCreate', async message => {
-  if (message.channelId !== LIAISON_AJUSTEMENT_ID || message.author.bot) return;
+  if (message.channelId !== LIAISON_AJUSTEMENT_ID) return;
+  if (![
+    USER_ID_AUTORISE,
+    client.user.id,
+    ...Array.from(message.guild?.roles?.cache?.get(ROLE_ADMIN_ID)?.members?.keys() || [])
+  ].includes(message.author.id)) return;
 
   let entreprise, litres;
 
-  // 💬 Cas 1 : message texte brut
-  const textMatch = message.content.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
-  if (textMatch) {
-    entreprise = textMatch[1];
-    litres = textMatch[2];
+  // Cas 1 : message texte
+  const matchText = message.content.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
+  if (matchText) {
+    entreprise = matchText[1];
+    litres = matchText[2];
   }
 
-  // 📎 Cas 2 : message embed
+  // Cas 2 : embed description
   if (!entreprise && message.embeds.length > 0) {
     const embed = message.embeds[0];
     const match = embed.description?.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
@@ -138,9 +144,9 @@ client.on('messageCreate', async message => {
   const updatedDesc = desc.replace(/🎯 \*\*Objectif :\*\* `.*? L`/, `🎯 **Objectif :** \`${litres} L\``);
   embed.setDescription(updatedDesc);
   await target.edit({ embeds: [embed] });
-
   console.log(`📌 Objectif mis à jour pour ${entreprise} → ${litres} L`);
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
