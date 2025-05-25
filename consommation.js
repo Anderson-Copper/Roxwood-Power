@@ -13,7 +13,7 @@ const {
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
 const CONSO_CHANNEL_ID = '1374906428418031626';
-const ROLE_ADMIN_ID = '1375058990152548372';
+const ROLE_ADMIN_ID = '1374863891296682185'; // Rôle développeur Roxwood
 
 const couleurs = {
   rouge: 0xFF0000,
