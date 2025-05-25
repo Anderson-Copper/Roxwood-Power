@@ -1,4 +1,4 @@
-// 📦 depot-detector.js (détecte "1" dans le canal dépôt et met à jour l’embed)
+// 📦 depot-detector.js (corrigé pour conserver l'objectif lors d'un ajout de volume)
 require('dotenv').config();
 const {
   Client,
@@ -69,7 +69,8 @@ client.on('messageCreate', async message => {
   );
 
   await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
-  console.log(`✅ Volume livré mis à jour pour ${ENTREPRISE} : +15L`);
+  console.log(`✅ Volume livré mis à jour pour ${ENTREPRISE} : +15L (Total: ${total}L)`);
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
