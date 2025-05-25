@@ -1,4 +1,4 @@
-// 📦 consommation.js (version complète avec gestion des ajustements et dépôts)
+// 📦 consommation.js (version complète avec gestion des ajustements, dépôts, création et archivage)
 require('dotenv').config();
 const {
   Client,
@@ -55,7 +55,7 @@ client.on('messageCreate', async message => {
     const couleur = LTD_couleurs[entreprise];
     if (!couleur) return;
 
-    objectifMap[entreprise] = objectif; // 🧠 Mémorise l’objectif
+    objectifMap[entreprise] = objectif;
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
     const messages = await channel.messages.fetch({ limit: 50 });
@@ -119,58 +119,51 @@ client.on('messageCreate', async message => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== 'creer-embed') return;
+  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
+    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+      return interaction.reply({ content: 'Tu n’as pas la permission.', ephemeral: true });
+    }
 
-  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-    return interaction.reply({ content: 'Tu n’as pas la permission.', ephemeral: true });
+    const entreprise = interaction.options.getString('entreprise');
+    const couleur = interaction.options.getString('couleur');
+    const objectif = interaction.options.getInteger('objectif_litre');
+
+    objectifMap[entreprise] = objectif;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📊 Suivi de consommation - ${entreprise}`)
+      .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`0 L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    await channel.send({ embeds: [embed], components: [row] });
+    await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
   }
 
-  const entreprise = interaction.options.getString('entreprise');
-  const couleur = interaction.options.getString('couleur');
-  const objectif = interaction.options.getInteger('objectif_litre');
+  if (interaction.isButton() && interaction.customId === 'archiver') {
+    try {
+      await interaction.deferReply({ ephemeral: true });
 
-  objectifMap[entreprise] = objectif;
+      const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const archiveThread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
 
-  const embed = new EmbedBuilder()
-    .setTitle(`📊 Suivi de consommation - ${entreprise}`)
-    .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`0 L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('archiver')
-      .setLabel('🗂 Archiver')
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  await channel.send({ embeds: [embed], components: [row] });
-  await interaction.reply({ content: `Embed créé pour ${entreprise}`, ephemeral: true });
-});
-
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isButton()) return;
-  if (interaction.customId !== 'archiver') return;
-
-  try {
-    await interaction.deferReply({ ephemeral: true }); // Annonce de réponse différée
-
-    const msg = await interaction.channel.messages.fetch(interaction.message.id);
-    const archiveThread = await interaction.channel.threads.create({
-      name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-    });
-
-    await archiveThread.send({ embeds: msg.embeds });
-    await msg.delete().catch(() => {});
-    await interaction.editReply({ content: 'Embed archivé avec succès.' }); // Réponse propre
-  } catch (err) {
-    console.error('❌ Erreur d’archivage :', err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true });
+      await archiveThread.send({ embeds: msg.embeds });
+      await msg.delete().catch(() => {});
+      await interaction.editReply({ content: 'Embed archivé avec succès.' });
+    } catch (err) {
+      console.error('❌ Erreur d’archivage :', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true });
+      }
     }
   }
 });
