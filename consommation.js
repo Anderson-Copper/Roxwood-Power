@@ -1,4 +1,4 @@
-// 📦 consommation.js (corrigé avec archivage sécurisé et message dans le thread)
+// 📦 consommation.js (corrigé avec archivage sécurisé, message dans le thread, et écoute des ajustements)
 require('dotenv').config();
 const {
   Client,
@@ -10,10 +10,11 @@ const {
   ThreadAutoArchiveDuration
 } = require('discord.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 const CONSO_CHANNEL_ID = '1374906428418031626';
-const ROLE_ADMIN_ID = '1374863891296682185'; // Rôle développeur Roxwood
+const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
+const ROLE_ADMIN_ID = '1374863891296682185';
 
 const couleurs = {
   rouge: 0xFF0000,
@@ -49,7 +50,6 @@ client.once('ready', async () => {
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand() && !interaction.isButton()) return;
 
-  // Commande /creer-embed
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: 'Tu n’as pas la permission.', flags: 1 << 6 });
@@ -78,7 +78,6 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ content: `Embed créé pour ${entreprise}`, flags: 1 << 6 });
   }
 
-  // Bouton Archiver
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: '🚫 Tu n’as pas la permission.', flags: 1 << 6 });
@@ -101,6 +100,30 @@ client.on('interactionCreate', async interaction => {
       console.error('❌ Erreur pendant l’archivage :', err);
     }
   }
+});
+
+// 🎯 Écoute des ajustements dans le salon LIAISON
+client.on('messageCreate', async message => {
+  if (message.channelId !== LIAISON_AJUSTEMENT_ID || message.author.bot) return;
+
+  const content = message.content;
+  const match = content.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
+  if (!match) return;
+
+  const [_, entreprise, litres] = match;
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 100 });
+
+  const target = messages.find(msg => msg.embeds[0]?.title?.includes(entreprise));
+  if (!target) return;
+
+  const embed = EmbedBuilder.from(target.embeds[0]);
+  const desc = embed.data.description || '';
+  const updatedDesc = desc.replace(/🎯 \*\*Objectif :\*\* `.*? L`/, `🎯 **Objectif :** \`${litres} L\``);
+  embed.setDescription(updatedDesc);
+  await target.edit({ embeds: [embed] });
+  console.log(`📌 Objectif mis à jour pour ${entreprise} → ${litres} L`);
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
