@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "npx concurrently \"node deploy-commands.js\" \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node depot-detector.js\" \"node bienvenu.js\"",
+    "start": "npx concurrently \"node deploy-commands.js\" \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node bienvenu.js\"",
     "dev": "nodemon index.js",
     "bienvenu": "node bienvenu.js"
   },
