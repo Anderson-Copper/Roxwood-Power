@@ -156,6 +156,8 @@ client.on('interactionCreate', async interaction => {
   if (interaction.customId !== 'archiver') return;
 
   try {
+    await interaction.deferReply({ ephemeral: true }); // Annonce de réponse différée
+
     const msg = await interaction.channel.messages.fetch(interaction.message.id);
     const archiveThread = await interaction.channel.threads.create({
       name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
@@ -164,7 +166,7 @@ client.on('interactionCreate', async interaction => {
 
     await archiveThread.send({ embeds: msg.embeds });
     await msg.delete().catch(() => {});
-    await interaction.reply({ content: 'Embed archivé avec succès.', ephemeral: true });
+    await interaction.editReply({ content: 'Embed archivé avec succès.' }); // Réponse propre
   } catch (err) {
     console.error('❌ Erreur d’archivage :', err);
     if (!interaction.replied && !interaction.deferred) {
