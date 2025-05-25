@@ -55,7 +55,7 @@ client.on('messageCreate', async message => {
   const messages = await consoChannel.messages.fetch({ limit: 50 });
 
   for (const entreprise in LTD_couleurs) {
-    const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+    const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(entreprise));
     if (!embedMessage) continue;
 
     const oldEmbed = embedMessage.embeds[0];
