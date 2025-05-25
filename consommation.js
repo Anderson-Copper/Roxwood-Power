@@ -1,4 +1,4 @@
-// 📦 consommation.js (corrigé avec archivage sécurisé, message dans le thread, et écoute des ajustements)
+// 📦 consommation.js (corrigé avec archivage sécurisé, message dans le thread, écoute des ajustements et archivage auto à chaque ajustement)
 require('dotenv').config();
 const {
   Client,
@@ -138,17 +138,26 @@ client.on('messageCreate', async message => {
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 100 });
-
   const target = messages.find(msg => msg.embeds[0]?.title?.includes(entreprise));
+
   if (!target) {
     console.warn(`❌ Aucun embed trouvé pour ${entreprise} dans le salon consommation.`);
     return;
   }
 
+  // Archiver l'ancien embed dans un fil
+  const archiveThread = await channel.threads.create({
+    name: `📁 Archive - ${entreprise} - ${new Date().toLocaleDateString('fr-FR')}`,
+    autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+  });
+  await archiveThread.send({ embeds: target.embeds });
+  await archiveThread.send({ content: `✅ Objectif mis à jour automatiquement pour ${entreprise}.` });
+
   const embed = EmbedBuilder.from(target.embeds[0]);
   const desc = embed.data.description || '';
   const updatedDesc = desc.replace(/🎯 \*\*Objectif :\*\* `.*? L`/, `🎯 **Objectif :** \`${litres} L\``);
   embed.setDescription(updatedDesc);
+
   await target.edit({ embeds: [embed] });
   console.log(`📌 Objectif mis à jour pour ${entreprise} → ${litres} L`);
 });
