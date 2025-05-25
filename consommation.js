@@ -77,18 +77,36 @@ client.on('messageCreate', async message => {
     console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
   }
 
- // 🛢️ Dépôt via embed
-if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
-  const embed = message.embeds[0];
-  const entrepriseLine = embed.description?.split('\n').find(line => line.includes('LTD'));
-  const quantiteLine = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'));
+ // 🛢️ Dépôt - Embed OU texte brut par développeur
+if (message.channelId === LIAISON_DEPOTS_ID) {
+  let entreprise = null;
+  let bidons = null;
 
-  if (!entrepriseLine || !quantiteLine) return;
+  // Cas 1 : Embed de dépôt structuré
+  if (message.embeds.length > 0) {
+    const embed = message.embeds[0];
+    const entrepriseLine = embed.description?.split('\n').find(line => line.includes('LTD'));
+    const quantiteField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'));
+    if (entrepriseLine && quantiteField) {
+      entreprise = entrepriseLine.trim();
+      bidons = parseInt(quantiteField.value.trim());
+    }
+  }
 
-  const entreprise = entrepriseLine.trim();
-  const bidons = parseInt(quantiteLine.value.trim());
-  if (isNaN(bidons)) return;
+  // Cas 2 : Message texte libre par dev
+  if (!bidons && message.content.includes('Dépot de produit')) {
+    const lignes = message.content.split('\n');
+    const ligneLTD = lignes.find(line => line.includes('LTD'));
+    const ligneQuantite = lignes.find(line => line.toLowerCase().includes('quantité déposé'));
 
+    if (ligneLTD && ligneQuantite) {
+      entreprise = ligneLTD.trim();
+      const match = ligneQuantite.match(/(\d+)/);
+      if (match) bidons = parseInt(match[1]);
+    }
+  }
+
+  if (!entreprise || isNaN(bidons)) return;
   const ajout = bidons * 15;
   const couleur = LTD_couleurs[entreprise];
   if (!couleur) return;
@@ -116,7 +134,7 @@ if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
   );
 
   await embedMessage.edit({ embeds: [embedUpdate], components: [row] });
-  console.log(`📦 Dépôt enregistré pour ${entreprise} : ${bidons} bidons (${ajout}L).`);
+  console.log(`📦 Dépôt reconnu pour ${entreprise} : ${bidons} bidons (${ajout} L).`);
 }
 });
 
