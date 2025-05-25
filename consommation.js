@@ -106,11 +106,26 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async message => {
   if (message.channelId !== LIAISON_AJUSTEMENT_ID || message.author.bot) return;
 
-  const content = message.content;
-  const match = content.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
-  if (!match) return;
+  let entreprise, litres;
 
-  const [_, entreprise, litres] = match;
+  // 💬 Cas 1 : message texte brut
+  const textMatch = message.content.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
+  if (textMatch) {
+    entreprise = textMatch[1];
+    litres = textMatch[2];
+  }
+
+  // 📎 Cas 2 : message embed
+  if (!entreprise && message.embeds.length > 0) {
+    const embed = message.embeds[0];
+    const match = embed.description?.match(/par (LTD [^\n]+)\nQuantité: (\d+)/);
+    if (match) {
+      entreprise = match[1];
+      litres = match[2];
+    }
+  }
+
+  if (!entreprise || !litres) return;
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 100 });
@@ -123,6 +138,7 @@ client.on('messageCreate', async message => {
   const updatedDesc = desc.replace(/🎯 \*\*Objectif :\*\* `.*? L`/, `🎯 **Objectif :** \`${litres} L\``);
   embed.setDescription(updatedDesc);
   await target.edit({ embeds: [embed] });
+
   console.log(`📌 Objectif mis à jour pour ${entreprise} → ${litres} L`);
 });
 
