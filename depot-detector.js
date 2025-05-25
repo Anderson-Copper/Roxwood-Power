@@ -1,4 +1,4 @@
-// 📦 depot-detector.js (multi-LTD dynamique)
+// 📦 depot-detector.js (multi-LTD dynamique corrigé)
 require('dotenv').config();
 const {
   Client,
@@ -34,6 +34,8 @@ const LTD_couleurs = {
   'LTD Roxwood': 'bleu'
 };
 
+const objectifMap = {}; // Mémoire persistante locale pour éviter l'écrasement
+
 client.once('ready', () => {
   console.log('🧪 Bot dépôt prêt :', client.user.tag);
 });
@@ -50,11 +52,17 @@ client.on('messageCreate', async message => {
     if (!embedMessage) continue;
 
     const oldEmbed = embedMessage.embeds[0];
-    const volumeMatch = oldEmbed.description.match(/Volume livré : `?(\d+) L`?/);
-    const objectifMatch = oldEmbed.description.match(/Objectif : `?(\d+) L`?/);
+    const volumeMatch = oldEmbed.description.match(/Volume livré\s*:\s*`?(\d+) L`?/);
+    const objectifMatch = oldEmbed.description.match(/Objectif\s*:\s*`?(\d+) L`?/);
 
     const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[entreprise] ?? 0);
+
+    // On sauvegarde l’objectif dans la map locale s’il est trouvé
+    if (objectifMatch) {
+      objectifMap[entreprise] = objectif;
+    }
+
     const total = actuel + 15;
     const couleur = LTD_couleurs[entreprise];
 
@@ -70,9 +78,10 @@ client.on('messageCreate', async message => {
     );
 
     await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
-    console.log(`✅ Volume mis à jour pour ${entreprise} : +15L → Total ${total}L`);
-    break; // on modifie un seul LTD à la fois
+    console.log(`✅ Volume mis à jour pour ${entreprise} : +15L → Total ${total}L (objectif conservé à ${objectif}L)`);
+    break; // un seul LTD à la fois
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
