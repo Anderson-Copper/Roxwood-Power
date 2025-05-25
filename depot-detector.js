@@ -1,4 +1,4 @@
-// 📦 depot-detector.js (corrigé pour conserver l'objectif lors d'un ajout de volume)
+// 📦 depot-detector.js (multi-LTD dynamique)
 require('dotenv').config();
 const {
   Client,
@@ -19,7 +19,6 @@ const client = new Client({
 
 const DEPOT_CHANNEL_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
-const ENTREPRISE = 'LTD Grove Street';
 
 const couleurs = {
   rouge: 0xFF0000,
@@ -45,32 +44,35 @@ client.on('messageCreate', async message => {
 
   const consoChannel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await consoChannel.messages.fetch({ limit: 50 });
-  const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(ENTREPRISE));
-  if (!embedMessage) return;
 
-  const oldEmbed = embedMessage.embeds[0];
-  const volumeMatch = oldEmbed.description.match(/Volume livré : `?(\d+) L`?/);
-  const objectifMatch = oldEmbed.description.match(/Objectif : `?(\d+) L`?/);
+  for (const entreprise in LTD_couleurs) {
+    const embedMessage = messages.find(m => m.embeds[0]?.title?.includes(entreprise));
+    if (!embedMessage) continue;
 
-  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
-  const total = actuel + 15; // chaque "1" = 1 bidon = 15L
+    const oldEmbed = embedMessage.embeds[0];
+    const volumeMatch = oldEmbed.description.match(/Volume livré : `?(\d+) L`?/);
+    const objectifMatch = oldEmbed.description.match(/Objectif : `?(\d+) L`?/);
 
-  const couleur = LTD_couleurs[ENTREPRISE];
-  const updatedEmbed = new EmbedBuilder()
-    .setTitle(`📊 Suivi de consommation - ${ENTREPRISE}`)
-    .setDescription(`\n💼 **Entreprise :** ${ENTREPRISE}\n💧 **Volume livré :** \`${total} L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
+    const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
+    const total = actuel + 15;
+    const couleur = LTD_couleurs[entreprise];
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
+    const updatedEmbed = new EmbedBuilder()
+      .setTitle(`📊 Suivi de consommation - ${entreprise}`)
+      .setDescription(`\n💼 **Entreprise :** ${entreprise}\n💧 **Volume livré :** \`${total} L\`\n🎯 **Objectif :** \`${objectif} L\`\n\n📅 Semaine du ${new Date().toLocaleDateString('fr-FR')}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
 
-  await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
-  console.log(`✅ Volume livré mis à jour pour ${ENTREPRISE} : +15L (Total: ${total}L)`);
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await embedMessage.edit({ embeds: [updatedEmbed], components: [row] });
+    console.log(`✅ Volume mis à jour pour ${entreprise} : +15L → Total ${total}L`);
+    break; // on modifie un seul LTD à la fois
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
