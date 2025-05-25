@@ -131,13 +131,19 @@ client.on('messageCreate', async message => {
     }
   }
 
-  if (!entreprise || !litres) return;
+  if (!entreprise || !litres) {
+    console.warn('⚠️ Aucun ajustement détecté ou nom de LTD introuvable dans le message.');
+    return;
+  }
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 100 });
 
   const target = messages.find(msg => msg.embeds[0]?.title?.includes(entreprise));
-  if (!target) return;
+  if (!target) {
+    console.warn(`❌ Aucun embed trouvé pour ${entreprise} dans le salon consommation.`);
+    return;
+  }
 
   const embed = EmbedBuilder.from(target.embeds[0]);
   const desc = embed.data.description || '';
@@ -148,5 +154,6 @@ client.on('messageCreate', async message => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
 
