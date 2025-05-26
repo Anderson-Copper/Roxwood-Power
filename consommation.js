@@ -178,3 +178,4 @@ async function updateVolume(entreprise, ajout) {
 }
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
