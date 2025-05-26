@@ -187,28 +187,35 @@ async function archiveAndResetEmbeds() {
   const messages = await channel.messages.fetch({ limit: 50 });
 
   for (const msg of messages.values()) {
-    const embed = msg.embeds[0];
-    const thread = await channel.threads.create({
-      name: `📁 Archive - ${embed.title} - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-    });
-    await thread.send({ embeds: [embed] });
-    const titre = embed.title;
-    const couleur = LTD_couleurs[titre];
-    const objectif = objectifMap[titre] ?? 0;
-    const percentBar = generateProgressBar(0, objectif);
-    const newEmbed = new EmbedBuilder()
-      .setTitle(titre)
-      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
-      .setColor(couleurs[couleur])
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-      .setTimestamp();
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-    );
-    await msg.edit({ embeds: [newEmbed], components: [row] });
-    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
-  }
+  const embed = msg.embeds[0];
+  if (!embed || !embed.title) continue; // ✅ Ignore les messages sans embed valide
+
+  const thread = await channel.threads.create({
+    name: `📁 Archive - ${embed.title} - ${new Date().toLocaleDateString('fr-FR')}`,
+    autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+  });
+
+  await thread.send({ embeds: [embed] });
+
+  const titre = embed.title;
+  const couleur = LTD_couleurs[titre];
+  const objectif = objectifMap[titre] ?? 0;
+  const percentBar = generateProgressBar(0, objectif);
+
+  const newEmbed = new EmbedBuilder()
+    .setTitle(titre)
+    .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+  );
+
+  await msg.edit({ embeds: [newEmbed], components: [row] });
+  console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+}
 }
 
 client.on('interactionCreate', async interaction => {
@@ -217,7 +224,7 @@ client.on('interactionCreate', async interaction => {
     if (interaction.replied || interaction.deferred) return;
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       const msg = await interaction.channel.messages.fetch(interaction.message.id);
       const thread = await interaction.channel.threads.create({
@@ -231,7 +238,7 @@ client.on('interactionCreate', async interaction => {
     } catch (err) {
       console.error('❌ Erreur d’archivage :', err);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
       }
     }
   }
@@ -239,10 +246,10 @@ client.on('interactionCreate', async interaction => {
   // 🌀 Slash command : /reset-consommation
   if (interaction.isChatInputCommand() && interaction.commandName === 'reset-consommation') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
     }
 
-    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', ephemeral: true });
+    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', flags: 64 });
     await archiveAndResetEmbeds();
     await interaction.editReply({ content: '✅ Remise à zéro terminée.' });
   }
