@@ -1,4 +1,4 @@
-// 📦 consommation.js (nouveau format avec barre de progression, ajustement & dépôt via embed ou texte, + archivage hebdo)
+// 📦 consommation.js (nouveau format avec barre de progression, ajustement & dépôt via embed ou texte, + archivage hebdo et manuel avec facture & mentions rôle)
 require('dotenv').config();
 const {
   Client,
@@ -24,6 +24,7 @@ const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
+const ROLE_DIRECTION_ID = 'REMPLACE_PAR_ID_DIRECTION'; // ⚠️ Mets ici l'ID du rôle direction
 
 const LTD_CHANNELS = {
   'LTD Grove Street': '1375406833212194856',
@@ -204,8 +205,7 @@ async function archiveAndResetEmbeds() {
     });
 
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine.
-💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+      content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
     });
     await thread.send({ embeds: [embed] });
 
@@ -228,6 +228,7 @@ async function archiveAndResetEmbeds() {
 }
 
 client.on('interactionCreate', async interaction => {
+  // ----- ARCHIVAGE MANUEL -----
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
@@ -239,12 +240,24 @@ client.on('interactionCreate', async interaction => {
       }
 
       const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const embed = msg.embeds[0];
+      const titre = embed?.title;
+      const desc = embed?.description || '';
+      const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+      const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+      const montant = Math.round((volume / 15) * 35);
+
       const thread = await interaction.channel.threads.create({
-        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+        name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
         autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
       });
 
-      await thread.send({ embeds: msg.embeds });
+      // Facture + mention
+      await thread.send({
+        content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+      });
+      await thread.send({ embeds: [embed] });
+
       await msg.delete().catch(() => {});
       await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
     } catch (err) {
@@ -255,6 +268,7 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+  // ----- CREATION EMBED -----
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
@@ -285,6 +299,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
 
 
