@@ -243,15 +243,34 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // 🌀 Slash command : /reset-consommation
-  if (interaction.isChatInputCommand() && interaction.commandName === 'reset-consommation') {
+   // 🧱 Slash command : /creer-embed
+  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
     }
 
-    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', flags: 64 });
-    await archiveAndResetEmbeds();
-    await interaction.editReply({ content: '✅ Remise à zéro terminée.' });
+    const entreprise = interaction.options.getString('entreprise');
+    const couleur = interaction.options.getString('couleur');
+    const objectif = interaction.options.getInteger('objectif_litre');
+
+    objectifMap[entreprise] = objectif;
+    const percentBar = generateProgressBar(0, objectif);
+
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    await channel.send({ embeds: [embed], components: [row] });
+
+    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
   }
 });
 
