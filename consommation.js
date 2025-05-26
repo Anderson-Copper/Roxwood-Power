@@ -211,4 +211,41 @@ async function archiveAndResetEmbeds() {
   }
 }
 
+client.on('interactionCreate', async interaction => {
+  // 🔘 Bouton Archiver
+  if (interaction.isButton() && interaction.customId === 'archiver') {
+    if (interaction.replied || interaction.deferred) return;
+
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const thread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
+
+      await thread.send({ embeds: msg.embeds });
+      await msg.delete().catch(() => {});
+      await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
+    } catch (err) {
+      console.error('❌ Erreur d’archivage :', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
+      }
+    }
+  }
+
+  // 🌀 Slash command : /reset-consommation
+  if (interaction.isChatInputCommand() && interaction.commandName === 'reset-consommation') {
+    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', ephemeral: true });
+    }
+
+    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', ephemeral: true });
+    await archiveAndResetEmbeds();
+    await interaction.editReply({ content: '✅ Remise à zéro terminée.' });
+  }
+});
+
 client.login(process.env.DISCORD_TOKEN_PWR);
