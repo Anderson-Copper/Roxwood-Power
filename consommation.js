@@ -230,12 +230,12 @@ async function archiveAndResetEmbeds() {
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
     }
 
     try {
       if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+        await interaction.deferReply({ flags: 64 }).catch(() => {});
       }
 
       const msg = await interaction.channel.messages.fetch(interaction.message.id);
@@ -250,7 +250,7 @@ client.on('interactionCreate', async interaction => {
     } catch (err) {
       console.error('❌ Erreur d’archivage :', err);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
       }
     }
   }
@@ -285,5 +285,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
 
