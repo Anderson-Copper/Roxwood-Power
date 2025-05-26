@@ -1,4 +1,4 @@
-// 📦 consommation.js (nouveau format avec barre de progression, ajustement & dépôt via embed ou texte)
+// 📦 consommation.js (nouveau format avec barre de progression, ajustement & dépôt via embed ou texte, + archivage hebdo)
 require('dotenv').config();
 const {
   Client,
@@ -7,7 +7,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration
+  ThreadAutoArchiveDuration,
+  Events
 } = require('discord.js');
 
 const client = new Client({
@@ -55,21 +56,19 @@ function generateProgressBar(current, max, length = 20) {
 
 client.once('ready', () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
+  scheduleWeeklyReset();
 });
 
 client.on('messageCreate', async message => {
-  // 🔧 Ajustement manuel
   if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
     const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
     const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
     if (!entrepriseMatch || !quantiteMatch) return;
-
     const entreprise = entrepriseMatch[1];
     const objectif = parseInt(quantiteMatch[1]);
     return updateObjectif(entreprise, objectif, true);
   }
 
-  // 🔧 Ajustement via commande urgente (liaison LTD) → AJOUT à l’objectif existant
   for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
     if (message.channelId === channelId && message.embeds.length > 0) {
       const embed = message.embeds[0];
@@ -78,33 +77,28 @@ client.on('messageCreate', async message => {
         if (!qtyField) return;
         const nbBidons = parseInt(qtyField.value);
         const ajoutObjectif = nbBidons * 15;
-        return updateObjectif(entreprise, ajoutObjectif, false); // false = on ajoute au lieu de remplacer
+        return updateObjectif(entreprise, ajoutObjectif, false);
       }
     }
   }
 
-  // 🛢️ Détection dépôt manuel texte
   if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
     const entrepriseMatch = message.content.match(/LTD .+/);
     const quantiteMatch = message.content.match(/Quantité déposé\n(\d+)/);
     if (!entrepriseMatch || !quantiteMatch) return;
-
     const entreprise = entrepriseMatch[0];
     const ajout = parseInt(quantiteMatch[1]) * 15;
     return updateVolume(entreprise, ajout);
   }
 
-  // 🛢️ Détection dépôt via embed
   if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
     const embed = message.embeds[0];
     const entrepriseMatch = embed.title?.match(/LTD .+/);
     const qtyField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'))?.value;
     if (!entrepriseMatch || !qtyField) return;
-
     const entreprise = entrepriseMatch[0];
     const bidons = parseInt(qtyField);
     if (isNaN(bidons)) return;
-
     return updateVolume(entreprise, bidons * 15);
   }
 });
@@ -112,7 +106,6 @@ client.on('messageCreate', async message => {
 async function updateObjectif(entreprise, valeur, remplacer = true) {
   const couleur = LTD_couleurs[entreprise];
   if (!couleur) return;
-
   const actuel = objectifMap[entreprise] ?? 0;
   const objectif = remplacer ? valeur : actuel + valeur;
   objectifMap[entreprise] = objectif;
@@ -177,5 +170,45 @@ async function updateVolume(entreprise, ajout) {
   console.log(`📦 Volume mis à jour pour ${entreprise} : +${ajout}L → Total ${nouveauVolume}L.`);
 }
 
-client.login(process.env.DISCORD_TOKEN_PWR);
+function scheduleWeeklyReset() {
+  const now = new Date();
+  const nextFriday = new Date();
+  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
+  nextFriday.setHours(23, 59, 0, 0);
+  const delay = nextFriday.getTime() - now.getTime();
+  setTimeout(() => {
+    archiveAndResetEmbeds();
+    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
+  }, delay);
+}
 
+async function archiveAndResetEmbeds() {
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+
+  for (const msg of messages.values()) {
+    const embed = msg.embeds[0];
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${embed.title} - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+    await thread.send({ embeds: [embed] });
+    const titre = embed.title;
+    const couleur = LTD_couleurs[titre];
+    const objectif = objectifMap[titre] ?? 0;
+    const percentBar = generateProgressBar(0, objectif);
+    const newEmbed = new EmbedBuilder()
+      .setTitle(titre)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+  }
+}
+
+client.login(process.env.DISCORD_TOKEN_PWR);
