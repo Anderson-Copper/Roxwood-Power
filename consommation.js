@@ -220,15 +220,16 @@ async function archiveAndResetEmbeds() {
 
 client.on('interactionCreate', async interaction => {
   // 🔘 Bouton Archiver
-  if (interaction.isButton() && interaction.customId === 'archiver') {
+ if (interaction.isButton() && interaction.customId === 'archiver') {
   if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-    return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver.', flags: 64 });
+    return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver.', flags: 64 }).catch(() => {});
   }
 
-  if (interaction.replied || interaction.deferred) return;
-
   try {
-    await interaction.deferReply({ flags: 64 });
+    // Vérifie que l’interaction est toujours valide
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    }
 
     const msg = await interaction.channel.messages.fetch(interaction.message.id);
     const thread = await interaction.channel.threads.create({
@@ -238,11 +239,11 @@ client.on('interactionCreate', async interaction => {
 
     await thread.send({ embeds: msg.embeds });
     await msg.delete().catch(() => {});
-    await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
+    await interaction.editReply?.({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
   } catch (err) {
     console.error('❌ Erreur d’archivage :', err);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
+      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
     }
   }
 }
