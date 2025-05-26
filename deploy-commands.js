@@ -1,4 +1,4 @@
-// 📦 deploy-commands.js (centralisé et complet)
+// 📆 deploy-commands.js (avec /reset-consommation ajoutée)
 require('dotenv').config();
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
@@ -61,7 +61,12 @@ const commands = [
     .addIntegerOption(option =>
       option.setName('objectif_litre')
         .setDescription('Objectif de litres')
-        .setRequired(true))
+        .setRequired(true)),
+
+  // 🔄 Consommation - Reset hebdomadaire manuel
+  new SlashCommandBuilder()
+    .setName('reset-consommation')
+    .setDescription('Archive et recrée tous les embeds de consommation')
 
 ].map(cmd => cmd.toJSON());
 
@@ -78,4 +83,5 @@ const commands = [
     console.error('❌ Erreur lors de l’enregistrement des commandes slash :', error);
   }
 })();
+
 
