@@ -7,7 +7,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration
+  ThreadAutoArchiveDuration,
+  Events
 } = require('discord.js');
 
 const client = new Client({
@@ -103,16 +104,139 @@ client.on('messageCreate', async message => {
   }
 });
 
-// les fonctions updateObjectif, updateVolume, generateProgressBar, scheduleWeeklyReset sont inchangées
+async function updateObjectif(entreprise, valeur, remplacer = true) {
+  const couleur = LTD_couleurs[entreprise];
+  if (!couleur) return;
+  const actuel = objectifMap[entreprise] ?? 0;
+  const objectif = remplacer ? valeur : actuel + valeur;
+  objectifMap[entreprise] = objectif;
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+  const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+  if (!embedMessage) return;
+
+  const oldEmbed = embedMessage.embeds[0];
+  const desc = oldEmbed.description || '';
+  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+  const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+  const percentBar = generateProgressBar(volume, objectif);
+
+  const embed = new EmbedBuilder()
+    .setTitle(entreprise)
+    .setDescription(`\n**${volume} L** / ${objectif} L\n${percentBar}`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+  );
+
+  await embedMessage.edit({ embeds: [embed], components: [row] });
+  console.log(`✅ Objectif ${remplacer ? 'défini' : 'ajouté'} pour ${entreprise} → ${objectif}L.`);
+}
+
+async function updateVolume(entreprise, ajout) {
+  const couleur = LTD_couleurs[entreprise];
+  if (!couleur) return;
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+  const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
+  if (!embedMessage) return;
+
+  const oldEmbed = embedMessage.embeds[0];
+  const desc = oldEmbed.description || '';
+  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+  const objectifMatch = desc.match(/\/ (\d+) L/);
+  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+
+  const nouveauVolume = actuel + ajout;
+  const percentBar = generateProgressBar(nouveauVolume, objectif);
+
+  const embed = new EmbedBuilder()
+    .setTitle(entreprise)
+    .setDescription(`\n**${nouveauVolume} L** / ${objectif} L\n${percentBar}`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+  );
+
+  await embedMessage.edit({ embeds: [embed], components: [row] });
+  console.log(`📦 Volume mis à jour pour ${entreprise} : +${ajout}L → Total ${nouveauVolume}L.`);
+}
+
+function scheduleWeeklyReset() {
+  const now = new Date();
+  const nextFriday = new Date();
+  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
+  nextFriday.setHours(23, 59, 0, 0);
+  const delay = nextFriday.getTime() - now.getTime();
+  setTimeout(() => {
+    archiveAndResetEmbeds();
+    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
+  }, delay);
+}
+
+async function archiveAndResetEmbeds() {
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+
+  for (const msg of messages.values()) {
+    const embed = msg.embeds[0];
+    if (!embed || !embed.title) continue;
+
+    const titre = embed.title;
+    const couleur = LTD_couleurs[titre];
+    const desc = embed.description || '';
+    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const montant = Math.round((volume / 15) * 35);
+
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+
+    await thread.send({
+      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine.
+💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+    });
+    await thread.send({ embeds: [embed] });
+
+    const objectif = objectifMap[titre] ?? 0;
+    const percentBar = generateProgressBar(0, objectif);
+    const newEmbed = new EmbedBuilder()
+      .setTitle(titre)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+  }
+}
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
+      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', ephemeral: true }).catch(() => {});
     }
 
     try {
-      await interaction.deferReply({ flags: 64 });
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ ephemeral: true }).catch(() => {});
+      }
 
       const msg = await interaction.channel.messages.fetch(interaction.message.id);
       const thread = await interaction.channel.threads.create({
@@ -126,20 +250,39 @@ client.on('interactionCreate', async interaction => {
     } catch (err) {
       console.error('❌ Erreur d’archivage :', err);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
       }
     }
   }
 
-  if (interaction.isChatInputCommand() && interaction.commandName === 'reset-consommation') {
+  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
     }
 
-    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', flags: 64 });
-    await archiveAndResetEmbeds();
-    await interaction.editReply({ content: '✅ Remise à zéro terminée.' });
+    const entreprise = interaction.options.getString('entreprise');
+    const couleur = interaction.options.getString('couleur');
+    const objectif = interaction.options.getInteger('objectif_litre');
+
+    objectifMap[entreprise] = objectif;
+    const percentBar = generateProgressBar(0, objectif);
+
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    await channel.send({ embeds: [embed], components: [row] });
+    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
   }
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
