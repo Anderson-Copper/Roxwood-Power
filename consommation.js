@@ -47,8 +47,9 @@ const LTD_couleurs = {
 const objectifMap = {}; // 🔁 Mémoire locale des objectifs
 
 function generateProgressBar(current, max, length = 20) {
-  const filled = Math.round((current / max) * length);
-  const empty = length - filled;
+  const percent = Math.min(current / max, 1);
+  const filled = Math.round(percent * length);
+  const empty = Math.max(length - filled, 0);
   return '▰'.repeat(filled) + '▱'.repeat(empty);
 }
 
@@ -68,7 +69,7 @@ client.on('messageCreate', async message => {
     return updateObjectif(entreprise, objectif);
   }
 
-  // 🔧 Ajustement via commande urgente
+  // 🔧 Ajustement via commande urgente (liaison LTD)
   for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
     if (message.channelId === channelId && message.embeds.length > 0) {
       const embed = message.embeds[0];
@@ -174,4 +175,5 @@ async function updateVolume(entreprise, ajout) {
 }
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
