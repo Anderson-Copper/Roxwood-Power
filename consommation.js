@@ -1,4 +1,3 @@
-// 📦 consommation.js (nouveau format avec barre de progression, ajustement & dépôt via embed ou texte, + archivage hebdo et manuel avec facture & mentions rôle)
 require('dotenv').config();
 const {
   Client,
@@ -7,8 +6,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration,
-  Events
+  ThreadAutoArchiveDuration
 } = require('discord.js');
 
 const client = new Client({
@@ -33,6 +31,13 @@ const LTD_CHANNELS = {
   'LTD Roxwood': '1375407362004750366'
 };
 
+const LTD_LIAISONS = {
+  'LTD Grove Street': '1375408011605966868',
+  'LTD Little Seoul': '1375408193064403044',
+  'LTD Sandy Shores': '1375408305110781982',
+  'LTD Roxwood': '1375408461172445214'
+};
+
 const couleurs = {
   rouge: 0xFF0000,
   orange: 0xFFA500,
@@ -47,7 +52,7 @@ const LTD_couleurs = {
   'LTD Roxwood': 'bleu'
 };
 
-const objectifMap = {}; // 🔁 Mémoire locale des objectifs
+const objectifMap = {};
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
@@ -199,16 +204,23 @@ async function archiveAndResetEmbeds() {
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
+    // ENVOI FACTURE DANS LA LIAISON DU LTD
+    const liaisonId = LTD_LIAISONS[titre];
+    if (liaisonId) {
+      const liaisonChannel = await client.channels.fetch(liaisonId);
+      await liaisonChannel.send({
+        content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+      });
+    }
+
+    // ARCHIVE : thread (embed seulement)
     const thread = await channel.threads.create({
       name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
     });
-
-    await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
-    });
     await thread.send({ embeds: [embed] });
 
+    // RESET EMBED PRINCIPAL
     const objectif = objectifMap[titre] ?? 0;
     const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
@@ -228,7 +240,6 @@ async function archiveAndResetEmbeds() {
 }
 
 client.on('interactionCreate', async interaction => {
-  // ----- ARCHIVAGE MANUEL -----
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
@@ -247,14 +258,19 @@ client.on('interactionCreate', async interaction => {
       const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
       const montant = Math.round((volume / 15) * 35);
 
+      // ENVOI FACTURE DANS LA LIAISON DU LTD
+      const liaisonId = LTD_LIAISONS[titre];
+      if (liaisonId) {
+        const liaisonChannel = await client.channels.fetch(liaisonId);
+        await liaisonChannel.send({
+          content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+        });
+      }
+
+      // ARCHIVE : thread (embed seulement)
       const thread = await interaction.channel.threads.create({
         name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
         autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-      });
-
-      // Facture + mention
-      await thread.send({
-        content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
       });
       await thread.send({ embeds: [embed] });
 
@@ -268,7 +284,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // ----- CREATION EMBED -----
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
