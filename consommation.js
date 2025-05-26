@@ -66,10 +66,10 @@ client.on('messageCreate', async message => {
 
     const entreprise = entrepriseMatch[1];
     const objectif = parseInt(quantiteMatch[1]);
-    return updateObjectif(entreprise, objectif);
+    return updateObjectif(entreprise, objectif, true);
   }
 
-  // 🔧 Ajustement via commande urgente (liaison LTD)
+  // 🔧 Ajustement via commande urgente (liaison LTD) → AJOUT à l’objectif existant
   for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
     if (message.channelId === channelId && message.embeds.length > 0) {
       const embed = message.embeds[0];
@@ -77,8 +77,8 @@ client.on('messageCreate', async message => {
         const qtyField = embed.fields?.find(f => f.name.includes('Quantité de Bidon'));
         if (!qtyField) return;
         const nbBidons = parseInt(qtyField.value);
-        const objectif = nbBidons * 15;
-        return updateObjectif(entreprise, objectif);
+        const ajoutObjectif = nbBidons * 15;
+        return updateObjectif(entreprise, ajoutObjectif, false); // false = on ajoute au lieu de remplacer
       }
     }
   }
@@ -109,9 +109,12 @@ client.on('messageCreate', async message => {
   }
 });
 
-async function updateObjectif(entreprise, objectif) {
+async function updateObjectif(entreprise, valeur, remplacer = true) {
   const couleur = LTD_couleurs[entreprise];
   if (!couleur) return;
+
+  const actuel = objectifMap[entreprise] ?? 0;
+  const objectif = remplacer ? valeur : actuel + valeur;
   objectifMap[entreprise] = objectif;
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
@@ -137,7 +140,7 @@ async function updateObjectif(entreprise, objectif) {
   );
 
   await embedMessage.edit({ embeds: [embed], components: [row] });
-  console.log(`✅ Objectif mis à jour pour ${entreprise} avec ${objectif}L.`);
+  console.log(`✅ Objectif ${remplacer ? 'défini' : 'ajouté'} pour ${entreprise} → ${objectif}L.`);
 }
 
 async function updateVolume(entreprise, ajout) {
@@ -175,5 +178,3 @@ async function updateVolume(entreprise, ajout) {
 }
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
-
