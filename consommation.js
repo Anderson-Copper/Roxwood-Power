@@ -7,8 +7,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration,
-  Events
+  ThreadAutoArchiveDuration
 } = require('discord.js');
 
 const client = new Client({
@@ -23,6 +22,7 @@ const LIAISON_AJUSTEMENT_ID = '1375516696957292646';
 const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
+const ROLE_DEV_ID = '1374863891296682185';
 
 const LTD_CHANNELS = {
   'LTD Grove Street': '1375406833212194856',
@@ -187,87 +187,18 @@ async function archiveAndResetEmbeds() {
   const messages = await channel.messages.fetch({ limit: 50 });
 
   for (const msg of messages.values()) {
-  const embed = msg.embeds[0];
-  if (!embed || !embed.title) continue; // ✅ Ignore les messages sans embed valide
+    const embed = msg.embeds[0];
+    if (!embed || !embed.title) continue;
 
-  const thread = await channel.threads.create({
-    name: `📁 Archive - ${embed.title} - ${new Date().toLocaleDateString('fr-FR')}`,
-    autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-  });
-
-  await thread.send({ embeds: [embed] });
-
-  const titre = embed.title;
-  const couleur = LTD_couleurs[titre];
-  const objectif = objectifMap[titre] ?? 0;
-  const percentBar = generateProgressBar(0, objectif);
-
-  const newEmbed = new EmbedBuilder()
-    .setTitle(titre)
-    .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
-
-  await msg.edit({ embeds: [newEmbed], components: [row] });
-  console.log(`🗂 Archivé & remis à zéro : ${titre}`);
-}
-}
-
-client.on('interactionCreate', async interaction => {
-  // 🔘 Bouton Archiver
-if (interaction.isButton() && interaction.customId === 'archiver') {
-  const DEV_ROLE_ID = '1374863891296682185';
-
-  // Sécurité : seul un membre avec le rôle développeur peut archiver
-  if (!interaction.member.roles.cache.has(DEV_ROLE_ID)) {
-    return interaction.reply({
-      content: '❌ Tu n’as pas la permission d’archiver ce message.',
-      ephemeral: true
-    }).catch(() => {});
-  }
-
-  try {
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply({ ephemeral: true }).catch(() => {});
-    }
-
-    const msg = await interaction.channel.messages.fetch(interaction.message.id);
-    const thread = await interaction.channel.threads.create({
-      name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-    });
-
-    await thread.send({ embeds: msg.embeds });
-    await msg.delete().catch(() => {});
-    await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
-  } catch (err) {
-    console.error('❌ Erreur d’archivage :', err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
-    }
-  }
-}
-
-   // 🧱 Slash command : /creer-embed
-  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
-    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
-    }
-
-    const entreprise = interaction.options.getString('entreprise');
-    const couleur = interaction.options.getString('couleur');
-    const objectif = interaction.options.getInteger('objectif_litre');
-
-    objectifMap[entreprise] = objectif;
+    const titre = embed.title;
+    const couleur = LTD_couleurs[titre];
+    const objectif = objectifMap[titre] ?? 0;
+    const volumeMatch = embed.description?.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const percentBar = generateProgressBar(0, objectif);
 
-    const embed = new EmbedBuilder()
-      .setTitle(entreprise)
+    const newEmbed = new EmbedBuilder()
+      .setTitle(titre)
       .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
       .setColor(couleurs[couleur])
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
@@ -277,10 +208,53 @@ if (interaction.isButton() && interaction.customId === 'archiver') {
       new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
-    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-    await channel.send({ embeds: [embed], components: [row] });
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
 
-    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
+    await thread.send({ embeds: [embed] });
+    await thread.send({ content: `<@&${ROLE_ADMIN_ID}> → ${titre} a consommé **${volume} L**, soit **$${Math.round((volume / 15) * 35).toLocaleString()}** à facturer.` });
+
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+  }
+}
+
+client.on('interactionCreate', async interaction => {
+  if (interaction.isButton() && interaction.customId === 'archiver') {
+    if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', ephemeral: true });
+    }
+
+    try {
+      await interaction.deferReply({ ephemeral: true });
+
+      const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const thread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
+
+      await thread.send({ embeds: msg.embeds });
+      await msg.delete().catch(() => {});
+      await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
+    } catch (err) {
+      console.error('❌ Erreur d’archivage :', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', ephemeral: true }).catch(() => {});
+      }
+    }
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'reset-consommation') {
+    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', ephemeral: true });
+    }
+
+    await interaction.reply({ content: '🔄 Archivage et remise à zéro en cours...', ephemeral: true });
+    await archiveAndResetEmbeds();
+    await interaction.editReply({ content: '✅ Remise à zéro terminée.' });
   }
 });
 
