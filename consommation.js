@@ -220,13 +220,18 @@ async function archiveAndResetEmbeds() {
 
 client.on('interactionCreate', async interaction => {
   // 🔘 Bouton Archiver
- if (interaction.isButton() && interaction.customId === 'archiver') {
-  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-    return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver.', flags: 64 }).catch(() => {});
+if (interaction.isButton() && interaction.customId === 'archiver') {
+  const DEV_ROLE_ID = '1374863891296682185';
+
+  // Sécurité : seul un membre avec le rôle développeur peut archiver
+  if (!interaction.member.roles.cache.has(DEV_ROLE_ID)) {
+    return interaction.reply({
+      content: '❌ Tu n’as pas la permission d’archiver ce message.',
+      ephemeral: true
+    }).catch(() => {});
   }
 
   try {
-    // Vérifie que l’interaction est toujours valide
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ ephemeral: true }).catch(() => {});
     }
@@ -239,7 +244,7 @@ client.on('interactionCreate', async interaction => {
 
     await thread.send({ embeds: msg.embeds });
     await msg.delete().catch(() => {});
-    await interaction.editReply?.({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
+    await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
   } catch (err) {
     console.error('❌ Erreur d’archivage :', err);
     if (!interaction.replied && !interaction.deferred) {
