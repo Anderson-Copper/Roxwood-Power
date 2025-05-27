@@ -22,7 +22,6 @@ const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
-const ROLE_DIRECTION_ID = 'REMPLACE_PAR_ID_DIRECTION'; // ⚠️ Mets ici l'ID du rôle direction
 
 const LTD_CHANNELS = {
   'LTD Grove Street': '1375406833212194856',
@@ -36,6 +35,13 @@ const LTD_LIAISONS = {
   'LTD Little Seoul': '1375408193064403044',
   'LTD Sandy Shores': '1375408305110781982',
   'LTD Roxwood': '1375408461172445214'
+};
+
+const LTD_ROLES = {
+  'LTD Grove Street': '1375134927158247628',
+  'LTD Little Seoul': '1375135009769394257',
+  'LTD Sandy Shores': '1375135009857601586',
+  'LTD Roxwood': '1375135010696200234'
 };
 
 const couleurs = {
@@ -204,12 +210,13 @@ async function archiveAndResetEmbeds() {
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
-    // ENVOI FACTURE DANS LA LIAISON DU LTD
+    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
     const liaisonId = LTD_LIAISONS[titre];
+    const ltdRoleId = LTD_ROLES[titre];
     if (liaisonId) {
       const liaisonChannel = await client.channels.fetch(liaisonId);
       await liaisonChannel.send({
-        content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+        content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
       });
     }
 
@@ -258,12 +265,13 @@ client.on('interactionCreate', async interaction => {
       const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
       const montant = Math.round((volume / 15) * 35);
 
-      // ENVOI FACTURE DANS LA LIAISON DU LTD
+      // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
       const liaisonId = LTD_LIAISONS[titre];
+      const ltdRoleId = LTD_ROLES[titre];
       if (liaisonId) {
         const liaisonChannel = await client.channels.fetch(liaisonId);
         await liaisonChannel.send({
-          content: `<@&${ROLE_ADMIN_ID}> <@&${ROLE_DIRECTION_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+          content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
         });
       }
 
