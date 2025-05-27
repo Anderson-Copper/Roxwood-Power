@@ -1,11 +1,23 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const {
+  Client,
+  GatewayIntentBits,
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  REST,
+  Routes,
+  Events
+} = require('discord.js');
+require('dotenv').config(); // Pour Render si tu veux localement
+const TOKEN = process.env.DISCORD_TOKEN_PWR;
+const CLIENT_ID = process.env.CLIENT_ID_PWR;
+const GUILD_ID = process.env.GUILD_ID_PWR;
 
-// IDs des salons de logs
 const LOGS_PRODUCTION = '1376982976176324648';
 const LOGS_LIVRAISON = '1375152581307007056';
 
-// Liste des LTD
 const LTD_LIST = [
   { label: 'Grove Street', value: 'Grove Street' },
   { label: 'Little Seoul', value: 'Little Seoul' },
@@ -13,104 +25,110 @@ const LTD_LIST = [
   { label: 'Roxwood', value: 'Roxwood' }
 ];
 
-// Lors du prêt du bot
-client.once('ready', () => {
-  console.log(`Connecté en tant que ${client.user.tag}`);
-});
+// Création du client
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Commande /creer-depot
-client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
-    const type = interaction.options.getString('type');
-    const ltd = interaction.options.getString('ltd');
+// Commande slash à enregistrer
+const command = new SlashCommandBuilder()
+  .setName('creer-depot')
+  .setDescription('Créer un dépôt manuel')
+  .addStringOption(option =>
+    option.setName('type')
+      .setDescription('Type de dépôt')
+      .setRequired(true)
+      .addChoices(
+        { name: 'Production', value: 'production' },
+        { name: 'Livraison', value: 'livraison' }
+      ))
+  .addStringOption(option =>
+    option.setName('ltd')
+      .setDescription('LTD concerné')
+      .setRequired(true)
+      .addChoices(...LTD_LIST.map(ltd => ({ name: ltd.label, value: ltd.value })))
+  )
+  .toJSON();
 
-    // Crée l'embed selon le type choisi
-    let embed;
-    let button;
-    if (type === 'production') {
-      embed = new EmbedBuilder()
-        .setColor(0x4caf50)
-        .setTitle("Déclarer vos 200 bidons produits")
-        .setDescription(`Cliquez sur le bouton pour déclarer une production de 200 bidons chez **${ltd}**.`);
-      button = new ButtonBuilder()
-        .setCustomId(`declarer_production_${ltd}`)
-        .setLabel('Déclarer 200 produits')
-        .setStyle(ButtonStyle.Success);
-    } else if (type === 'livraison') {
-      embed = new EmbedBuilder()
-        .setColor(0x2196f3)
-        .setTitle("Déclarer vos 200 bidons livrés")
-        .setDescription(`Cliquez sur le bouton pour déclarer une livraison de 200 bidons chez **${ltd}**.`);
-      button = new ButtonBuilder()
-        .setCustomId(`declarer_livraison_${ltd}`)
-        .setLabel('Déclarer 200 livrés')
-        .setStyle(ButtonStyle.Primary);
-    } else {
-      return interaction.reply({ content: 'Type inconnu.', ephemeral: true });
-    }
-
-    const row = new ActionRowBuilder().addComponents(button);
-
-    await interaction.reply({ embeds: [embed], components: [row] });
-  }
-
-  // Gestion du bouton
-  if (interaction.isButton()) {
-    const customId = interaction.customId;
-    let type, ltd;
-    if (customId.startsWith('declarer_production_')) {
-      type = 'production';
-      ltd = customId.replace('declarer_production_', '');
-    } else if (customId.startsWith('declarer_livraison_')) {
-      type = 'livraison';
-      ltd = customId.replace('declarer_livraison_', '');
-    } else {
-      return;
-    }
-
-    const user = interaction.user;
-    const embedLog = new EmbedBuilder()
-      .setColor(type === 'production' ? 0x4caf50 : 0x2196f3)
-      .setTitle(type === 'production' ? "Production déclarée" : "Livraison déclarée")
-      .addFields(
-        { name: "Employé", value: user.username, inline: true },
-        { name: "LTD", value: ltd, inline: true },
-        { name: "Quantité", value: "200 bidons", inline: true }
-      )
-      .setTimestamp();
-
-    // Envoi dans le bon salon
-    const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
-    const channel = await interaction.guild.channels.fetch(channelId);
-    if (channel) {
-      await channel.send({ embeds: [embedLog] });
-      await interaction.reply({ content: 'Déclaration envoyée !', ephemeral: true });
-    } else {
-      await interaction.reply({ content: 'Erreur : salon introuvable.', ephemeral: true });
-    }
-  }
-});
-
-// Enregistrement de la commande (exemple, à faire une seule fois)
-client.on('ready', async () => {
-  const data = new SlashCommandBuilder()
-    .setName('creer-depot')
-    .setDescription('Créer un dépôt manuel')
-    .addStringOption(option =>
-      option.setName('type')
-        .setDescription('Type de dépôt')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Production', value: 'production' },
-          { name: 'Livraison', value: 'livraison' }
-        ))
-    .addStringOption(option =>
-      option.setName('ltd')
-        .setDescription('LTD concerné')
-        .setRequired(true)
-        .addChoices(...LTD_LIST.map(ltd => ({ name: ltd.label, value: ltd.value })))
+// Déploiement de la commande (dans le serveur GUILD_ID)
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+(async () => {
+  try {
+    console.log('Déploiement de /creer-depot...');
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: [command] }
     );
-  await client.application.commands.create(data, '1376982976176324648'); // Remplace par l'ID de ton serveur
+    console.log('✅ Commande /creer-depot déployée');
+  } catch (error) {
+    console.error('❌ Erreur de déploiement :', error);
+  }
+})();
+
+// Interaction globale (slash + boutons)
+client.on(Events.InteractionCreate, async interaction => {
+  try {
+    // Slash command
+    if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
+      const type = interaction.options.getString('type');
+      const ltd = interaction.options.getString('ltd');
+
+      const embed = new EmbedBuilder()
+        .setColor(type === 'production' ? 0x4caf50 : 0x2196f3)
+        .setTitle(`Déclarer vos 200 bidons ${type === 'production' ? 'produits' : 'livrés'}`)
+        .setDescription(`Cliquez sur le bouton pour déclarer une **${type}** de 200 bidons chez **${ltd}**.`);
+
+      const button = new ButtonBuilder()
+        .setCustomId(`declarer_${type}_${ltd}`)
+        .setLabel(`Déclarer 200 ${type === 'production' ? 'produits' : 'livrés'}`)
+        .setStyle(type === 'production' ? ButtonStyle.Success : ButtonStyle.Primary);
+
+      const row = new ActionRowBuilder().addComponents(button);
+
+      await interaction.reply({ embeds: [embed], components: [row] });
+    }
+
+    // Bouton
+    if (interaction.isButton()) {
+      const customId = interaction.customId;
+      let type, ltd;
+
+      if (customId.startsWith('declarer_production_')) {
+        type = 'production';
+        ltd = customId.replace('declarer_production_', '');
+      } else if (customId.startsWith('declarer_livraison_')) {
+        type = 'livraison';
+        ltd = customId.replace('declarer_livraison_', '');
+      } else {
+        return;
+      }
+
+      const logEmbed = new EmbedBuilder()
+        .setColor(type === 'production' ? 0x4caf50 : 0x2196f3)
+        .setTitle(type === 'production' ? 'Production déclarée' : 'Livraison déclarée')
+        .addFields(
+          { name: 'Employé', value: interaction.user.username, inline: true },
+          { name: 'LTD', value: ltd, inline: true },
+          { name: 'Quantité', value: '200 bidons', inline: true }
+        )
+        .setTimestamp();
+
+      const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
+      const channel = await interaction.guild.channels.fetch(channelId);
+      if (!channel) return await interaction.reply({ content: 'Erreur : salon introuvable.', ephemeral: true });
+
+      await channel.send({ embeds: [logEmbed] });
+      await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', ephemeral: true });
+    }
+  } catch (error) {
+    console.error('Erreur d’interaction :', error);
+    if (!interaction.replied) {
+      await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
+    }
+  }
 });
 
-client.login(process.env.DISCORD_TOKEN_PWR); // Remplace par ton token
+// Connexion
+client.once('ready', () => {
+  console.log(`🤖 Connecté en tant que ${client.user.tag}`);
+});
+client.login(TOKEN);
+
