@@ -68,6 +68,31 @@ const commands = [
     .setName('reset-consommation')
     .setDescription('Archive et recrée tous les embeds de consommation')
 
+// 📦 Dépôt Manuel - Création d'embed
+  new SlashCommandBuilder()
+    .setName('creer-depot')
+    .setDescription('Créer un dépôt manuel')
+    .addStringOption(option =>
+      option.setName('type')
+        .setDescription('Type de dépôt')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Production', value: 'production' },
+          { name: 'Livraison', value: 'livraison' }
+        )
+    )
+    .addStringOption(option =>
+      option.setName('ltd')
+        .setDescription('LTD concerné')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Grove Street', value: 'Grove Street' },
+          { name: 'Little Seoul', value: 'Little Seoul' },
+          { name: 'Sandy Shores', value: 'Sandy Shores' },
+          { name: 'Roxwood', value: 'Roxwood' }
+        )
+    ),
+
 ].map(cmd => cmd.toJSON());
 
 (async () => {
