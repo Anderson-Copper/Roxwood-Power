@@ -113,4 +113,4 @@ client.on('ready', async () => {
   await client.application.commands.create(data, '1376982976176324648'); // Remplace par l'ID de ton serveur
 });
 
-client.login('TON_TOKEN_BOT'); // Remplace par ton token
+client.login(process.env.DISCORD_TOKEN_PWR); // Remplace par ton token
