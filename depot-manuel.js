@@ -28,41 +28,6 @@ const LTD_LIST = [
 // Création du client
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Commande slash à enregistrer
-const command = new SlashCommandBuilder()
-  .setName('creer-depot')
-  .setDescription('Créer un dépôt manuel')
-  .addStringOption(option =>
-    option.setName('type')
-      .setDescription('Type de dépôt')
-      .setRequired(true)
-      .addChoices(
-        { name: 'Production', value: 'production' },
-        { name: 'Livraison', value: 'livraison' }
-      ))
-  .addStringOption(option =>
-    option.setName('ltd')
-      .setDescription('LTD concerné')
-      .setRequired(true)
-      .addChoices(...LTD_LIST.map(ltd => ({ name: ltd.label, value: ltd.value })))
-  )
-  .toJSON();
-
-// Déploiement de la commande (dans le serveur GUILD_ID)
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-(async () => {
-  try {
-    console.log('Déploiement de /creer-depot...');
-    await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-      { body: [command] }
-    );
-    console.log('✅ Commande /creer-depot déployée');
-  } catch (error) {
-    console.error('❌ Erreur de déploiement :', error);
-  }
-})();
-
 // Interaction globale (slash + boutons)
 client.on(Events.InteractionCreate, async interaction => {
   try {
