@@ -18,19 +18,19 @@ const LOGS_LIVRAISON = '1375152581307007056';
 const LTD_CONFIG = {
   'Grove Street': {
     color: 0xff0000, // Rouge
-    logo: 'https://i.postimg.cc/fRJMFbQD/groove.jpg'
+    logo: 'https://link-to-logo-grove.png'
   },
   'Little Seoul': {
     color: 0x00ff00, // Vert
-    logo: 'https://i.postimg.cc/W1CsPPsr/Seoul-LTD-3.png'
+    logo: 'https://link-to-logo-seoul.png'
   },
   'Sandy Shores': {
     color: 0xffa500, // Orange
-    logo: 'https://i.postimg.cc/nztZCYjh/sandy.png'
+    logo: 'https://link-to-logo-sandy.png'
   },
   'Roxwood': {
     color: 0x0000ff, // Bleu
-    logo: 'https://i.postimg.cc/0NkF3Wwm/logo.png'
+    logo: 'https://link-to-logo-roxwood.png'
   }
 };
 
@@ -79,7 +79,7 @@ client.on(Events.InteractionCreate, async interaction => {
         .setTitle(type === 'production' ? 'Production déclarée' : 'Livraison déclarée')
         .setThumbnail(config.logo)
         .addFields(
-          { name: 'Employé', value: interaction.member.nickname || interaction.user.username, inline: true },
+          { name: 'Employé', value: interaction.user.username, inline: true },
           { name: 'LTD', value: ltd, inline: true },
           { name: 'Quantité', value: '200 bidons', inline: true }
         )
@@ -114,4 +114,5 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
+
 
