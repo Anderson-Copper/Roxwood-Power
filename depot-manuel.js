@@ -35,7 +35,9 @@ const LTD_CONFIG = {
 };
 
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+});
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
