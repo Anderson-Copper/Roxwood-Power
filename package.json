@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "npx concurrently \"node deploy-commands.js\" \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node bienvenu.js\" \"node creer-depot.js\"",
+    "start": "npx concurrently \"node deploy-commands.js\" \"node index.js\" \"node bot-vehicules.js\" \"node consommation.js\" \"node bienvenu.js\" \"node depot-manuel.js\"",
     "dev": "nodemon index.js",
     "bienvenu": "node bienvenu.js",
     "creer-depot": "node creer-depot.js"
