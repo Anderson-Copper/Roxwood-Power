@@ -78,15 +78,15 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
       const channel = await interaction.guild.channels.fetch(channelId);
-      if (!channel) return await interaction.reply({ content: 'Erreur : salon introuvable.', ephemeral: true });
+      if (!channel) return await interaction.reply({ content: 'Erreur : salon introuvable.', flags: 64 });
 
       await channel.send({ embeds: [logEmbed] });
-      await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', ephemeral: true });
+      await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
     }
   } catch (error) {
     console.error('Erreur d’interaction :', error);
     if (!interaction.replied) {
-      await interaction.reply({ content: 'Une erreur est survenue.', ephemeral: true });
+      await interaction.reply({ content: 'Une erreur est survenue.', flags: 64 });
     }
   }
 });
