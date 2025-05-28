@@ -1,3 +1,4 @@
+// ✅ Script complet : depot-manuel.js (bot bouton infini et embed colorés)
 const {
   Client,
   GatewayIntentBits,
@@ -10,26 +11,26 @@ const {
 require('dotenv').config();
 
 const TOKEN = process.env.DISCORD_TOKEN_PWR;
-
 const LOGS_PRODUCTION = '1376982976176324648';
 const LOGS_LIVRAISON = '1375152581307007056';
 
+// 🎨 Couleurs + Logos pour chaque LTD
 const LTD_CONFIG = {
   'Grove Street': {
-    color: 0xff0000,
-    logo: 'https://i.postimg.cc/fRJMFbQD/groove.jpg'
+    color: 0xff0000, // Rouge
+    logo: 'https://link-to-logo-grove.png'
   },
   'Little Seoul': {
-    color: 0x4caf50,
-    logo: 'https://i.postimg.cc/W1CsPPsr/Seoul-LTD-3.png'
+    color: 0x00ff00, // Vert
+    logo: 'https://link-to-logo-seoul.png'
   },
   'Sandy Shores': {
-    color: 0xff9800,
-    logo: 'https://i.postimg.cc/nztZCYjh/sandy.png'
+    color: 0xffa500, // Orange
+    logo: 'https://link-to-logo-sandy.png'
   },
   'Roxwood': {
-    color: 0x2196f3,
-    logo: 'https://i.postimg.cc/0NkF3Wwm/logo.png'
+    color: 0x0000ff, // Bleu
+    logo: 'https://link-to-logo-roxwood.png'
   }
 };
 
@@ -37,11 +38,11 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
-    // 📌 Slash Commande
+    // 📌 Slash Commande : creer-depot
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
-      const config = LTD_CONFIG[ltd] ?? { color: 0x808080 };
+      const config = LTD_CONFIG[ltd] ?? { color: 0x808080, logo: null };
 
       const embed = new EmbedBuilder()
         .setColor(config.color)
@@ -58,7 +59,7 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // 📌 Bouton
+    // 📌 Bouton : déclarer_production_* ou déclarer_livraison_*
     if (interaction.isButton()) {
       const customId = interaction.customId;
       let type, ltd;
@@ -71,7 +72,7 @@ client.on(Events.InteractionCreate, async interaction => {
         ltd = customId.replace('declarer_livraison_', '');
       } else return;
 
-      const config = LTD_CONFIG[ltd] ?? { color: 0x808080 };
+      const config = LTD_CONFIG[ltd] ?? { color: 0x808080, logo: null };
 
       const logEmbed = new EmbedBuilder()
         .setColor(config.color)
@@ -87,24 +88,23 @@ client.on(Events.InteractionCreate, async interaction => {
       const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
       const channel = await interaction.guild.channels.fetch(channelId);
 
-      if (!channel) {
-        if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: '❌ Salon introuvable.', flags: 64 });
-        }
-        return;
-      }
+      if (channel) await channel.send({ embeds: [logEmbed] });
 
-      await channel.send({ embeds: [logEmbed] });
-
+      // Répondre une seule fois, si non déjà fait
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
+        try {
+          await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
+        } catch (err) {
+          console.warn('⚠️ Réponse déjà envoyée :', err.message);
+        }
       }
     }
-
   } catch (error) {
     console.error('❌ Erreur d’interaction :', error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Une erreur est survenue.', flags: 64 });
+      try {
+        await interaction.reply({ content: '❌ Une erreur est survenue.', flags: 64 });
+      } catch (_) {}
     }
   }
 });
@@ -114,3 +114,4 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
+
