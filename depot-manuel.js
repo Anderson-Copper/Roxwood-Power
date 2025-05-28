@@ -14,12 +14,24 @@ const TOKEN = process.env.DISCORD_TOKEN_PWR;
 const LOGS_PRODUCTION = '1376982976176324648';
 const LOGS_LIVRAISON = '1375152581307007056';
 
-const LTD_LIST = [
-  { label: 'Grove Street', value: 'Grove Street' },
-  { label: 'Little Seoul', value: 'Little Seoul' },
-  { label: 'Sandy Shores', value: 'Sandy Shores' },
-  { label: 'Roxwood', value: 'Roxwood' }
-];
+const LTD_CONFIG = {
+  'Grove Street': {
+    color: 0xff0000,
+    logo: 'https://i.postimg.cc/fRJMFbQD/groove.jpg'
+  },
+  'Little Seoul': {
+    color: 0x4caf50,
+    logo: 'https://i.postimg.cc/W1CsPPsr/Seoul-LTD-3.png'
+  },
+  'Sandy Shores': {
+    color: 0xff9800,
+    logo: 'https://i.postimg.cc/nztZCYjh/sandy.png'
+  },
+  'Roxwood': {
+    color: 0x2196f3,
+    logo: 'https://i.postimg.cc/0NkF3Wwm/logo.png'
+  }
+};
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -29,11 +41,13 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
+      const config = LTD_CONFIG[ltd] ?? { color: 0x808080 };
 
       const embed = new EmbedBuilder()
-        .setColor(type === 'production' ? 0x4caf50 : 0x2196f3)
+        .setColor(config.color)
         .setTitle(`Déclarer vos 200 bidons ${type === 'production' ? 'produits' : 'livrés'}`)
-        .setDescription(`Cliquez sur le bouton pour déclarer une **${type}** de 200 bidons chez **${ltd}**.`);
+        .setDescription(`Cliquez sur le bouton pour déclarer une **${type}** de 200 bidons chez **${ltd}**.`)
+        .setThumbnail(config.logo);
 
       const button = new ButtonBuilder()
         .setCustomId(`declarer_${type}_${ltd}`)
@@ -41,7 +55,6 @@ client.on(Events.InteractionCreate, async interaction => {
         .setStyle(type === 'production' ? ButtonStyle.Success : ButtonStyle.Primary);
 
       const row = new ActionRowBuilder().addComponents(button);
-
       await interaction.reply({ embeds: [embed], components: [row] });
     }
 
@@ -56,13 +69,14 @@ client.on(Events.InteractionCreate, async interaction => {
       } else if (customId.startsWith('declarer_livraison_')) {
         type = 'livraison';
         ltd = customId.replace('declarer_livraison_', '');
-      } else {
-        return;
-      }
+      } else return;
+
+      const config = LTD_CONFIG[ltd] ?? { color: 0x808080 };
 
       const logEmbed = new EmbedBuilder()
-        .setColor(type === 'production' ? 0x4caf50 : 0x2196f3)
+        .setColor(config.color)
         .setTitle(type === 'production' ? 'Production déclarée' : 'Livraison déclarée')
+        .setThumbnail(config.logo)
         .addFields(
           { name: 'Employé', value: interaction.user.username, inline: true },
           { name: 'LTD', value: ltd, inline: true },
@@ -100,4 +114,3 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
-
