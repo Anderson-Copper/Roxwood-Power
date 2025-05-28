@@ -1,4 +1,4 @@
-// ✅ Script complet : depot-manuel.js (bot bouton infini et embed colorés)
+// ✅ Script complet : depot-manuel.js (format embed standardisé pour détection)
 const {
   Client,
   GatewayIntentBits,
@@ -18,19 +18,19 @@ const LOGS_LIVRAISON = '1375152581307007056';
 const LTD_CONFIG = {
   'Grove Street': {
     color: 0xff0000, // Rouge
-    logo: 'https://link-to-logo-grove.png'
+    logo: 'https://i.postimg.cc/fRJMFbQD/groove.jpg'
   },
   'Little Seoul': {
     color: 0x00ff00, // Vert
-    logo: 'https://link-to-logo-seoul.png'
+    logo: 'https://i.postimg.cc/W1CsPPsr/Seoul-LTD-3.png'
   },
   'Sandy Shores': {
     color: 0xffa500, // Orange
-    logo: 'https://link-to-logo-sandy.png'
+    logo: 'https://i.postimg.cc/nztZCYjh/sandy.png'
   },
   'Roxwood': {
     color: 0x0000ff, // Bleu
-    logo: 'https://link-to-logo-roxwood.png'
+    logo: 'https://i.postimg.cc/0NkF3Wwm/logo.png'
   }
 };
 
@@ -38,7 +38,6 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
-    // 📌 Slash Commande : creer-depot
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
@@ -46,8 +45,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const embed = new EmbedBuilder()
         .setColor(config.color)
-        .setTitle(`Déclarer vos 200 bidons ${type === 'production' ? 'produits' : 'livrés'}`)
-        .setDescription(`Cliquez sur le bouton pour déclarer une **${type}** de 200 bidons chez **${ltd}**.`)
+        .setTitle(`Déposer 200 bidons (${type})`)
+        .setDescription(`Cliquez sur le bouton pour déposer 200 bidons chez **${ltd}**.`)
         .setThumbnail(config.logo);
 
       const button = new ButtonBuilder()
@@ -59,7 +58,6 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // 📌 Bouton : déclarer_production_* ou déclarer_livraison_*
     if (interaction.isButton()) {
       const customId = interaction.customId;
       let type, ltd;
@@ -73,24 +71,24 @@ client.on(Events.InteractionCreate, async interaction => {
       } else return;
 
       const config = LTD_CONFIG[ltd] ?? { color: 0x808080, logo: null };
+      const nickname = interaction.member?.nickname || interaction.user.username;
 
       const logEmbed = new EmbedBuilder()
         .setColor(config.color)
-        .setTitle(type === 'production' ? 'Production déclarée' : 'Livraison déclarée')
-        .setThumbnail(config.logo)
+        .setAuthor({ name: nickname })
+        .setTitle(`LTD ${ltd}`)
         .addFields(
-          { name: 'Employé', value: interaction.user.username, inline: true },
-          { name: 'LTD', value: ltd, inline: true },
-          { name: 'Quantité', value: '200 bidons', inline: true }
+          { name: 'Quantité déposé', value: '200', inline: true },
+          { name: "Prix à l'unité", value: '0', inline: true },
+          { name: 'Salaire', value: '0', inline: true }
         )
+        .setThumbnail(config.logo)
         .setTimestamp();
 
       const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
       const channel = await interaction.guild.channels.fetch(channelId);
-
       if (channel) await channel.send({ embeds: [logEmbed] });
 
-      // Répondre une seule fois, si non déjà fait
       if (!interaction.replied && !interaction.deferred) {
         try {
           await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
@@ -114,5 +112,6 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
+
 
 
