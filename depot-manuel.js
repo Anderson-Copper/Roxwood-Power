@@ -50,7 +50,7 @@ client.on(Events.InteractionCreate, async interaction => {
           .setColor(0x4caf50)
           .setTitle('Déclarer votre production de 200 bidons')
           .setDescription(`Cliquez sur le bouton ci-dessous pour déclarer votre production.`)
-          .setThumbnail('https://cdn-icons-png.flaticon.com/512/6198/6198510.png'); // icône de bidon
+          .setThumbnail('https://i.postimg.cc/3xqNVnCW/bidon-d-essence.png'); // icône de bidon
 
         const button = new ButtonBuilder()
           .setCustomId(`declarer_production_global`)
