@@ -1,4 +1,4 @@
-// 📆 deploy-commands.js (avec /reset-consommation ajoutée)
+// 📆 deploy-commands.js
 require('dotenv').config();
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
@@ -61,14 +61,15 @@ const commands = [
     .addIntegerOption(option =>
       option.setName('objectif_litre')
         .setDescription('Objectif de litres')
-        .setRequired(true)),
+        .setRequired(true)
+    ),
 
   // 🔄 Consommation - Reset hebdomadaire manuel
   new SlashCommandBuilder()
     .setName('reset-consommation')
-    .setDescription('Archive et recrée tous les embeds de consommation')
+    .setDescription('Archive et recrée tous les embeds de consommation'),
 
-// 📦 Dépôt Manuel - Création d'embed
+  // 📦 Dépôt Manuel - Création d'embed
   new SlashCommandBuilder()
     .setName('creer-depot')
     .setDescription('Créer un dépôt manuel')
@@ -91,8 +92,7 @@ const commands = [
           { name: 'Sandy Shores', value: 'Sandy Shores' },
           { name: 'Roxwood', value: 'Roxwood' }
         )
-    ),
-
+    )
 ].map(cmd => cmd.toJSON());
 
 (async () => {
@@ -108,5 +108,6 @@ const commands = [
     console.error('❌ Erreur lors de l’enregistrement des commandes slash :', error);
   }
 })();
+
 
 
