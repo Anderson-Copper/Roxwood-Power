@@ -1,19 +1,15 @@
 const {
   Client,
   GatewayIntentBits,
-  SlashCommandBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-  REST,
-  Routes,
   Events
 } = require('discord.js');
-require('dotenv').config(); // Pour Render si tu veux localement
+require('dotenv').config();
+
 const TOKEN = process.env.DISCORD_TOKEN_PWR;
-const CLIENT_ID = process.env.CLIENT_ID_PWR;
-const GUILD_ID = process.env.GUILD_ID_PWR;
 
 const LOGS_PRODUCTION = '1376982976176324648';
 const LOGS_LIVRAISON = '1375152581307007056';
@@ -25,13 +21,11 @@ const LTD_LIST = [
   { label: 'Roxwood', value: 'Roxwood' }
 ];
 
-// Création du client
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Interaction globale (slash + boutons)
 client.on(Events.InteractionCreate, async interaction => {
   try {
-    // Slash command
+    // 📌 Slash Commande
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
@@ -51,7 +45,7 @@ client.on(Events.InteractionCreate, async interaction => {
       await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // Bouton
+    // 📌 Bouton
     if (interaction.isButton()) {
       const customId = interaction.customId;
       let type, ltd;
@@ -78,22 +72,32 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const channelId = type === 'production' ? LOGS_PRODUCTION : LOGS_LIVRAISON;
       const channel = await interaction.guild.channels.fetch(channelId);
-      if (!channel) return await interaction.reply({ content: 'Erreur : salon introuvable.', flags: 64 });
+
+      if (!channel) {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Salon introuvable.', flags: 64 });
+        }
+        return;
+      }
 
       await channel.send({ embeds: [logEmbed] });
-      await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
+
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '✅ Déclaration envoyée avec succès !', flags: 64 });
+      }
     }
+
   } catch (error) {
-    console.error('Erreur d’interaction :', error);
-    if (!interaction.replied) {
-      await interaction.reply({ content: 'Une erreur est survenue.', flags: 64 });
+    console.error('❌ Erreur d’interaction :', error);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '❌ Une erreur est survenue.', flags: 64 });
     }
   }
 });
 
-// Connexion
 client.once('ready', () => {
   console.log(`🤖 Connecté en tant que ${client.user.tag}`);
 });
+
 client.login(TOKEN);
 
