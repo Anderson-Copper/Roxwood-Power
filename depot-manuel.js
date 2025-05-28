@@ -1,4 +1,4 @@
-// ✅ Script complet : depot-manuel.js (format embed standardisé pour détection)
+// ✅ Script complet : depot-manuel.js (format embed standardisé + deferReply)
 const {
   Client,
   GatewayIntentBits,
@@ -34,12 +34,13 @@ const LTD_CONFIG = {
   }
 };
 
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.on(Events.InteractionCreate, async interaction => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
 
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
@@ -49,7 +50,7 @@ client.on(Events.InteractionCreate, async interaction => {
           .setColor(0x4caf50)
           .setTitle('Déclarer votre production de 200 bidons')
           .setDescription(`Cliquez sur le bouton ci-dessous pour déclarer votre production.`)
-          .setThumbnail('https://i.postimg.cc/3xqNVnCW/bidon-d-essence.png'); // icône de bidon
+          .setThumbnail('https://cdn-icons-png.flaticon.com/512/6198/6198510.png'); // icône de bidon
 
         const button = new ButtonBuilder()
           .setCustomId(`declarer_production_global`)
