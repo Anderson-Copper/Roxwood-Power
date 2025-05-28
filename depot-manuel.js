@@ -39,32 +39,52 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.on(Events.InteractionCreate, async interaction => {
   try {
     if (interaction.isChatInputCommand() && interaction.commandName === 'creer-depot') {
+      await interaction.deferReply({ ephemeral: true });
+
       const type = interaction.options.getString('type');
       const ltd = interaction.options.getString('ltd');
-      const config = LTD_CONFIG[ltd] ?? { color: 0x808080, logo: null };
 
-      const embed = new EmbedBuilder()
-        .setColor(config.color)
-        .setTitle(`Déposer 200 bidons (${type})`)
-        .setDescription(`Cliquez sur le bouton pour déposer 200 bidons chez **${ltd}**.`)
-        .setThumbnail(config.logo);
+      if (type === 'production') {
+        const embed = new EmbedBuilder()
+          .setColor(0x4caf50)
+          .setTitle('Déclarer votre production de 200 bidons')
+          .setDescription(`Cliquez sur le bouton ci-dessous pour déclarer votre production.`)
+          .setThumbnail('https://cdn-icons-png.flaticon.com/512/6198/6198510.png'); // icône de bidon
 
-      const button = new ButtonBuilder()
-        .setCustomId(`declarer_${type}_${ltd}`)
-        .setLabel(`Déclarer 200 ${type === 'production' ? 'produits' : 'livrés'}`)
-        .setStyle(type === 'production' ? ButtonStyle.Success : ButtonStyle.Primary);
+        const button = new ButtonBuilder()
+          .setCustomId(`declarer_production_global`)
+          .setLabel(`🛢️ Déclarer 200 bidons`)
+          .setStyle(ButtonStyle.Success);
 
-      const row = new ActionRowBuilder().addComponents(button);
-      await interaction.reply({ embeds: [embed], components: [row] });
+        const row = new ActionRowBuilder().addComponents(button);
+        await interaction.editReply({ embeds: [embed], components: [row] });
+
+      } else {
+        const config = LTD_CONFIG[ltd] ?? { color: 0x808080, logo: null };
+
+        const embed = new EmbedBuilder()
+          .setColor(config.color)
+          .setTitle(`Déposer 200 bidons (livraison)`)
+          .setDescription(`Cliquez sur le bouton pour déposer 200 bidons chez **${ltd}**.`)
+          .setThumbnail(config.logo);
+
+        const button = new ButtonBuilder()
+          .setCustomId(`declarer_livraison_${ltd}`)
+          .setLabel(`Déclarer 200 livrés`)
+          .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(button);
+        await interaction.editReply({ embeds: [embed], components: [row] });
+      }
     }
 
     if (interaction.isButton()) {
       const customId = interaction.customId;
       let type, ltd;
 
-      if (customId.startsWith('declarer_production_')) {
+      if (customId === 'declarer_production_global') {
         type = 'production';
-        ltd = customId.replace('declarer_production_', '');
+        ltd = 'Global';
       } else if (customId.startsWith('declarer_livraison_')) {
         type = 'livraison';
         ltd = customId.replace('declarer_livraison_', '');
@@ -112,6 +132,7 @@ client.once('ready', () => {
 });
 
 client.login(TOKEN);
+
 
 
 
