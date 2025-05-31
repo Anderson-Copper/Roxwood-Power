@@ -1,3 +1,4 @@
+// 📦 consommation.js (nouveau format complet avec suivi par thread, archive hebdo et reprise des objectifs)
 require('dotenv').config();
 const {
   Client,
@@ -6,7 +7,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration
+  ThreadAutoArchiveDuration,
+  Events
 } = require('discord.js');
 
 const client = new Client({
@@ -30,20 +32,6 @@ const LTD_CHANNELS = {
   'LTD Roxwood': '1375407362004750366'
 };
 
-const LTD_LIAISONS = {
-  'LTD Grove Street': '1375408011605966868',
-  'LTD Little Seoul': '1375408193064403044',
-  'LTD Sandy Shores': '1375408305110781982',
-  'LTD Roxwood': '1375408461172445214'
-};
-
-const LTD_ROLES = {
-  'LTD Grove Street': '1375134927158247628',
-  'LTD Little Seoul': '1375135009769394257',
-  'LTD Sandy Shores': '1375135009857601586',
-  'LTD Roxwood': '1375135010696200234'
-};
-
 const couleurs = {
   rouge: 0xFF0000,
   orange: 0xFFA500,
@@ -58,7 +46,8 @@ const LTD_couleurs = {
   'LTD Roxwood': 'bleu'
 };
 
-const objectifMap = {};
+const objectifMap = {}; // 🔁 Mémoire locale des objectifs
+const threadsMap = {}; // 🧵 Threads par LTD
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
@@ -67,8 +56,14 @@ function generateProgressBar(current, max, length = 20) {
   return '▰'.repeat(filled) + '▱'.repeat(empty);
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const threads = await channel.threads.fetchActive();
+  threads.threads.forEach(thread => {
+    const ltd = Object.keys(LTD_CHANNELS).find(nom => thread.name.includes(nom));
+    if (ltd) threadsMap[ltd] = thread;
+  });
   scheduleWeeklyReset();
 });
 
@@ -208,27 +203,26 @@ async function archiveAndResetEmbeds() {
     const desc = embed.description || '';
     const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const objectifMatch = desc.match(/\/ (\d+) L/);
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
+    objectifMap[titre] = objectif;
+
     const montant = Math.round((volume / 15) * 35);
 
-    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
-    const liaisonId = LTD_LIAISONS[titre];
-    const ltdRoleId = LTD_ROLES[titre];
-    if (liaisonId) {
-      const liaisonChannel = await client.channels.fetch(liaisonId);
-      await liaisonChannel.send({
-        content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+    let thread = threadsMap[titre];
+    if (!thread) {
+      thread = await channel.threads.create({
+        name: `📁 Archive - ${titre}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
       });
+      threadsMap[titre] = thread;
     }
 
-    // ARCHIVE : thread (embed seulement)
-    const thread = await channel.threads.create({
-      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    await thread.send({
+      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
     });
     await thread.send({ embeds: [embed] });
 
-    // RESET EMBED PRINCIPAL
-    const objectif = objectifMap[titre] ?? 0;
     const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
       .setTitle(titre)
@@ -242,6 +236,7 @@ async function archiveAndResetEmbeds() {
     );
 
     await msg.edit({ embeds: [newEmbed], components: [row] });
+    await channel.send({ embeds: [newEmbed], components: [row] });
     console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
 }
@@ -251,45 +246,8 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
     }
-
-    try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ flags: 64 }).catch(() => {});
-      }
-
-      const msg = await interaction.channel.messages.fetch(interaction.message.id);
-      const embed = msg.embeds[0];
-      const titre = embed?.title;
-      const desc = embed?.description || '';
-      const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-      const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-      const montant = Math.round((volume / 15) * 35);
-
-      // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
-      const liaisonId = LTD_LIAISONS[titre];
-      const ltdRoleId = LTD_ROLES[titre];
-      if (liaisonId) {
-        const liaisonChannel = await client.channels.fetch(liaisonId);
-        await liaisonChannel.send({
-          content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
-        });
-      }
-
-      // ARCHIVE : thread (embed seulement)
-      const thread = await interaction.channel.threads.create({
-        name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-      });
-      await thread.send({ embeds: [embed] });
-
-      await msg.delete().catch(() => {});
-      await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
-    } catch (err) {
-      console.error('❌ Erreur d’archivage :', err);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
-      }
-    }
+    await archiveAndResetEmbeds();
+    await interaction.reply({ content: '✅ Archivage manuel effectué.', flags: 64 });
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
@@ -322,4 +280,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
