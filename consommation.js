@@ -190,7 +190,7 @@ function scheduleWeeklyReset() {
   }, delay);
 }
 
-async function archiveAndResetEmbeds() {
+async function archiveAndResetEmbeds(interaction = null) {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
 
@@ -239,6 +239,10 @@ async function archiveAndResetEmbeds() {
     await channel.send({ embeds: [newEmbed], components: [row] });
     console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
+
+  if (interaction && interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+    await interaction.reply({ content: '✅ Archivage manuel effectué.', flags: 64 }).catch(() => {});
+  }
 }
 
 client.on('interactionCreate', async interaction => {
@@ -246,8 +250,7 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
       return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
     }
-    await archiveAndResetEmbeds();
-    await interaction.reply({ content: '✅ Archivage manuel effectué.', flags: 64 });
+    await archiveAndResetEmbeds(interaction);
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
