@@ -59,7 +59,6 @@ const LTD_couleurs = {
 };
 
 const objectifMap = {};
-const threadsMap = {}; // nouveau : pour conserver l’ID du thread de chaque LTD
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
@@ -71,6 +70,50 @@ function generateProgressBar(current, max, length = 20) {
 client.once('ready', () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
   scheduleWeeklyReset();
+});
+
+client.on('messageCreate', async message => {
+  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
+    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
+    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[1];
+    const objectif = parseInt(quantiteMatch[1]);
+    return updateObjectif(entreprise, objectif, true);
+  }
+
+  for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
+    if (message.channelId === channelId && message.embeds.length > 0) {
+      const embed = message.embeds[0];
+      if (embed.title?.includes('Nouvelle Commande')) {
+        const qtyField = embed.fields?.find(f => f.name.includes('Quantité de Bidon'));
+        if (!qtyField) return;
+        const nbBidons = parseInt(qtyField.value);
+        const ajoutObjectif = nbBidons * 15;
+        return updateObjectif(entreprise, ajoutObjectif, false);
+      }
+    }
+  }
+
+  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
+    const entrepriseMatch = message.content.match(/LTD .+/);
+    const quantiteMatch = message.content.match(/Quantité déposé\n(\d+)/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[0];
+    const ajout = parseInt(quantiteMatch[1]) * 15;
+    return updateVolume(entreprise, ajout);
+  }
+
+  if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
+    const embed = message.embeds[0];
+    const entrepriseMatch = embed.title?.match(/LTD .+/);
+    const qtyField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'))?.value;
+    if (!entrepriseMatch || !qtyField) return;
+    const entreprise = entrepriseMatch[0];
+    const bidons = parseInt(qtyField);
+    if (isNaN(bidons)) return;
+    return updateVolume(entreprise, bidons * 15);
+  }
 });
 
 async function updateObjectif(entreprise, valeur, remplacer = true) {
@@ -167,6 +210,7 @@ async function archiveAndResetEmbeds() {
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
+    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
     const liaisonId = LTD_LIAISONS[titre];
     const ltdRoleId = LTD_ROLES[titre];
     if (liaisonId) {
@@ -176,21 +220,14 @@ async function archiveAndResetEmbeds() {
       });
     }
 
-    let thread;
-    if (threadsMap[titre]) {
-      thread = await channel.threads.fetch(threadsMap[titre]).catch(() => null);
-    }
-
-    if (!thread || thread.archived) {
-      thread = await channel.threads.create({
-        name: `📁 Archives ${titre}`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-      });
-      threadsMap[titre] = thread.id;
-    }
-
+    // ARCHIVE : thread (embed seulement)
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
     await thread.send({ embeds: [embed] });
 
+    // RESET EMBED PRINCIPAL
     const objectif = objectifMap[titre] ?? 0;
     const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
@@ -205,48 +242,9 @@ async function archiveAndResetEmbeds() {
     );
 
     await msg.edit({ embeds: [newEmbed], components: [row] });
-    await msg.pin().catch(() => {});
     console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
 }
-
-client.on('messageCreate', async message => {
-  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
-    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
-    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
-    if (!entrepriseMatch || !quantiteMatch) return;
-    const entreprise = entrepriseMatch[1];
-    const objectif = parseInt(quantiteMatch[1]);
-    return updateObjectif(entreprise, objectif, true);
-  }
-
-  for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
-    if (message.channelId === channelId && message.embeds.length > 0) {
-      const embed = message.embeds[0];
-      if (embed.title?.includes('Nouvelle Commande')) {
-        const qtyField = embed.fields?.find(f => f.name.includes('Quantité de Bidon'));
-        if (!qtyField) return;
-        const nbBidons = parseInt(qtyField.value);
-        const ajoutObjectif = nbBidons * 15;
-        return updateObjectif(entreprise, ajoutObjectif, false);
-      }
-    }
-  }
-
-  if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
-    const embed = message.embeds[0];
-    const entrepriseMatch = embed.title?.match(/LTD .+/);
-    const qtyField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'))?.value;
-    if (!entrepriseMatch || !qtyField) return;
-    const entreprise = entrepriseMatch[0];
-    const bidons = parseInt(qtyField);
-    if (!isNaN(bidons)) {
-      return updateVolume(entreprise, bidons * 15);
-    }
-  }
-});
-
-const threadsMap = {}; // Stocke les IDs des threads archivés
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
@@ -267,6 +265,7 @@ client.on('interactionCreate', async interaction => {
       const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
       const montant = Math.round((volume / 15) * 35);
 
+      // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
       const liaisonId = LTD_LIAISONS[titre];
       const ltdRoleId = LTD_ROLES[titre];
       if (liaisonId) {
@@ -276,39 +275,15 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      const consoChannel = await client.channels.fetch(CONSO_CHANNEL_ID);
-      let thread;
-      if (threadsMap[titre]) {
-        thread = await consoChannel.threads.fetch(threadsMap[titre]).catch(() => null);
-      }
-      if (!thread || thread.archived) {
-        thread = await consoChannel.threads.create({
-          name: `📁 Archives ${titre}`,
-          autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-        });
-        threadsMap[titre] = thread.id;
-      }
-
+      // ARCHIVE : thread (embed seulement)
+      const thread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
       await thread.send({ embeds: [embed] });
 
-      const objectif = objectifMap[titre] ?? 0;
-      const couleur = LTD_couleurs[titre];
-      const percentBar = generateProgressBar(0, objectif);
-      const newEmbed = new EmbedBuilder()
-        .setTitle(titre)
-        .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
-        .setColor(couleurs[couleur])
-        .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-        .setTimestamp();
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-      );
-
       await msg.delete().catch(() => {});
-      await consoChannel.send({ embeds: [newEmbed], components: [row] });
-
-      await interaction.editReply({ content: '✅ Embed archivé et remplacé avec succès.' }).catch(() => {});
+      await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
     } catch (err) {
       console.error('❌ Erreur d’archivage :', err);
       if (!interaction.replied && !interaction.deferred) {
@@ -347,3 +322,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
