@@ -6,8 +6,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ThreadAutoArchiveDuration,
-  ChannelType
+  ThreadAutoArchiveDuration
 } = require('discord.js');
 
 const client = new Client({
@@ -23,6 +22,13 @@ const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
+
+const LTD_CHANNELS = {
+  'LTD Grove Street': '1375406833212194856',
+  'LTD Little Seoul': '1375407141166518272',
+  'LTD Sandy Shores': '1375407195415511060',
+  'LTD Roxwood': '1375407362004750366'
+};
 
 const LTD_LIAISONS = {
   'LTD Grove Street': '1375408011605966868',
@@ -53,7 +59,7 @@ const LTD_couleurs = {
 };
 
 const objectifMap = {};
-const threadMap = {}; // <=== NOUVEAU : pour stocker l'ID du thread unique par LTD
+const threadsMap = {}; // nouveau : pour conserver l’ID du thread de chaque LTD
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
@@ -62,52 +68,9 @@ function generateProgressBar(current, max, length = 20) {
   return '▰'.repeat(filled) + '▱'.repeat(empty);
 }
 
-client.once('ready', async () => {
+client.once('ready', () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
-  await loadThreads(); // Récupération des threads d’archive
   scheduleWeeklyReset();
-});
-
-async function loadThreads() {
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  const threads = await channel.threads.fetchActive();
-  threads.threads.forEach(thread => {
-    const match = thread.name.match(/Archive - (.+)/);
-    if (match) {
-      const nomLTD = match[1].trim();
-      threadMap[nomLTD] = thread.id;
-    }
-  });
-}
-
-client.on('messageCreate', async message => {
-  // Détection ajustement manuel
-  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
-    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
-    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
-    if (!entrepriseMatch || !quantiteMatch) return;
-    const entreprise = entrepriseMatch[1];
-    const objectif = parseInt(quantiteMatch[1]);
-    return updateObjectif(entreprise, objectif, true);
-  }
-
-  // Détection log livraison via embed
-  if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
-    const embed = message.embeds[0];
-    const entreprise = embed.title?.match(/LTD [^\n]+/)?.[0];
-    const qtyField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'))?.value;
-    if (!entreprise || !qtyField) return;
-    const bidons = parseInt(qtyField);
-    if (!isNaN(bidons)) return updateVolume(entreprise, bidons * 15);
-  }
-
-  // Détection via texte brut
-  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
-    const entreprise = message.content.match(/LTD .+/)?.[0];
-    const quantite = message.content.match(/Quantité déposé\n(\d+)/)?.[1];
-    if (!entreprise || !quantite) return;
-    return updateVolume(entreprise, parseInt(quantite) * 15);
-  }
 });
 
 async function updateObjectif(entreprise, valeur, remplacer = true) {
@@ -202,26 +165,8 @@ async function archiveAndResetEmbeds() {
     const desc = embed.description || '';
     const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-    const objectifMatch = desc.match(/\/ (\d+) L/);
-    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-    );
-
-    // Nouveau embed (posté avant archive)
-    const percentBar = generateProgressBar(0, objectif);
-    const newEmbed = new EmbedBuilder()
-      .setTitle(titre)
-      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
-      .setColor(couleurs[couleur])
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-      .setTimestamp();
-
-    await channel.send({ embeds: [newEmbed], components: [row] });
-
-    // Envoi facture
     const liaisonId = LTD_LIAISONS[titre];
     const ltdRoleId = LTD_ROLES[titre];
     if (liaisonId) {
@@ -231,45 +176,97 @@ async function archiveAndResetEmbeds() {
       });
     }
 
-    // ARCHIVAGE : dans thread unique
-    let thread = null;
-    const threadId = threadMap[titre];
-    if (threadId) {
-      thread = await channel.threads.fetch(threadId).catch(() => null);
+    let thread;
+    if (threadsMap[titre]) {
+      thread = await channel.threads.fetch(threadsMap[titre]).catch(() => null);
     }
 
     if (!thread || thread.archived) {
       thread = await channel.threads.create({
-        name: `📁 Archive - ${titre}`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
-        type: ChannelType.PublicThread
+        name: `📁 Archives ${titre}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
       });
-      threadMap[titre] = thread.id;
+      threadsMap[titre] = thread.id;
     }
 
     await thread.send({ embeds: [embed] });
-    await msg.delete().catch(() => {});
-    console.log(`🗂 ${titre} archivé et nouveau embed posté.`);
+
+    const objectif = objectifMap[titre] ?? 0;
+    const percentBar = generateProgressBar(0, objectif);
+    const newEmbed = new EmbedBuilder()
+      .setTitle(titre)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    await msg.pin().catch(() => {});
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
 }
+
+client.on('messageCreate', async message => {
+  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
+    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
+    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[1];
+    const objectif = parseInt(quantiteMatch[1]);
+    return updateObjectif(entreprise, objectif, true);
+  }
+
+  for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
+    if (message.channelId === channelId && message.embeds.length > 0) {
+      const embed = message.embeds[0];
+      if (embed.title?.includes('Nouvelle Commande')) {
+        const qtyField = embed.fields?.find(f => f.name.includes('Quantité de Bidon'));
+        if (!qtyField) return;
+        const nbBidons = parseInt(qtyField.value);
+        const ajoutObjectif = nbBidons * 15;
+        return updateObjectif(entreprise, ajoutObjectif, false);
+      }
+    }
+  }
+
+  if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
+    const embed = message.embeds[0];
+    const entrepriseMatch = embed.title?.match(/LTD .+/);
+    const qtyField = embed.fields?.find(f => f.name.toLowerCase().includes('quantité'))?.value;
+    if (!entrepriseMatch || !qtyField) return;
+    const entreprise = entrepriseMatch[0];
+    const bidons = parseInt(qtyField);
+    if (!isNaN(bidons)) {
+      return updateVolume(entreprise, bidons * 15);
+    }
+  }
+});
+
+const threadsMap = {}; // Stocke les IDs des threads archivés
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
     if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
     }
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: 64 }).catch(() => {});
+      }
 
       const msg = await interaction.channel.messages.fetch(interaction.message.id);
       const embed = msg.embeds[0];
       const titre = embed?.title;
       const desc = embed?.description || '';
-      const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1] || '0');
+      const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+      const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
       const montant = Math.round((volume / 15) * 35);
 
-      // facture
       const liaisonId = LTD_LIAISONS[titre];
       const ltdRoleId = LTD_ROLES[titre];
       if (liaisonId) {
@@ -279,33 +276,50 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // thread unique
-      const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-      let thread = null;
-      const threadId = threadMap[titre];
-      if (threadId) {
-        thread = await channel.threads.fetch(threadId).catch(() => null);
+      const consoChannel = await client.channels.fetch(CONSO_CHANNEL_ID);
+      let thread;
+      if (threadsMap[titre]) {
+        thread = await consoChannel.threads.fetch(threadsMap[titre]).catch(() => null);
       }
       if (!thread || thread.archived) {
-        thread = await channel.threads.create({
-          name: `📁 Archive - ${titre}`,
+        thread = await consoChannel.threads.create({
+          name: `📁 Archives ${titre}`,
           autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
         });
-        threadMap[titre] = thread.id;
+        threadsMap[titre] = thread.id;
       }
 
       await thread.send({ embeds: [embed] });
+
+      const objectif = objectifMap[titre] ?? 0;
+      const couleur = LTD_couleurs[titre];
+      const percentBar = generateProgressBar(0, objectif);
+      const newEmbed = new EmbedBuilder()
+        .setTitle(titre)
+        .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+        .setColor(couleurs[couleur])
+        .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+        .setTimestamp();
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+      );
+
       await msg.delete().catch(() => {});
-      await interaction.editReply({ content: '✅ Embed archivé avec succès.' });
-    } catch (e) {
-      console.error('Erreur archivage :', e);
-      await interaction.editReply({ content: '❌ Erreur pendant l’archivage.' });
+      await consoChannel.send({ embeds: [newEmbed], components: [row] });
+
+      await interaction.editReply({ content: '✅ Embed archivé et remplacé avec succès.' }).catch(() => {});
+    } catch (err) {
+      console.error('❌ Erreur d’archivage :', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
+      }
     }
   }
 
   if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
     if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission.', ephemeral: true });
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
     }
 
     const entreprise = interaction.options.getString('entreprise');
@@ -328,7 +342,7 @@ client.on('interactionCreate', async interaction => {
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
     await channel.send({ embeds: [embed], components: [row] });
-    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, ephemeral: true });
+    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
   }
 });
 
