@@ -227,24 +227,36 @@ async function archiveAndResetEmbeds() {
     });
     await thread.send({ embeds: [embed] });
 
-    // RESET EMBED PRINCIPAL
-    const objectif = objectifMap[titre] ?? 0;
-    const percentBar = generateProgressBar(0, objectif);
-    const newEmbed = new EmbedBuilder()
-      .setTitle(titre)
-      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
-      .setColor(couleurs[couleur])
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-      .setTimestamp();
+    // EXTRAIRE L'OBJECTIF
+const objectifMatch = desc.match(/\/ (\d+) L/);
+const objectif = objectifMatch ? parseInt(objectifMatch[1]) : 0;
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-    );
+// CRÉER LE NOUVEL EMBED AVANT ARCHIVAGE
+const percentBar = generateProgressBar(0, objectif);
+const newEmbed = new EmbedBuilder()
+  .setTitle(titre)
+  .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+  .setColor(couleurs[couleur])
+  .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+  .setTimestamp();
 
-    await msg.edit({ embeds: [newEmbed], components: [row] });
-    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
-  }
-}
+const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+);
+
+// ENVOI AVANT ARCHIVAGE
+await channel.send({ embeds: [newEmbed], components: [row] });
+
+// ARCHIVAGE EN THREAD
+const thread = await channel.threads.create({
+  name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+  autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+});
+await thread.send({ embeds: [embed] });
+
+// SUPPRIMER L'ANCIEN MESSAGE
+await msg.delete().catch(() => {});
+console.log(`🗂 Nouvel embed créé & ancien archivé pour ${titre}`);
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
