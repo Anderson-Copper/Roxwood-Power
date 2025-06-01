@@ -185,10 +185,16 @@ async function updateVolume(entreprise, ajout) {
 
 function scheduleWeeklyReset() {
   const now = new Date();
-  const nextFriday = new Date();
-  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
-  nextFriday.setHours(23, 59, 0, 0);
-  const delay = nextFriday.getTime() - now.getTime();
+  const resetTime = new Date();
+  resetTime.setHours(14, 35, 0, 0); // Pour aujourd'hui à 14h35
+
+  if (resetTime < now) {
+    resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
+  }
+
+  const delay = resetTime.getTime() - now.getTime();
+  console.log(`⏳ Réinitialisation planifiée dans ${Math.round(delay / 1000)} secondes.`);
+
   setTimeout(() => {
     archiveAndResetEmbeds();
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
