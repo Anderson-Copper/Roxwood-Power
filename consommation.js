@@ -56,6 +56,18 @@ function generateProgressBar(current, max, length = 20) {
   return '▰'.repeat(filled) + '▱'.repeat(empty);
 }
 
+function scheduleWeeklyReset() {
+  const now = new Date();
+  const nextFriday = new Date();
+  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
+  nextFriday.setHours(23, 59, 0, 0);
+  const delay = nextFriday.getTime() - now.getTime();
+  setTimeout(() => {
+    archiveAndResetEmbeds();
+    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
+  }, delay);
+}
+
 client.once('ready', async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
