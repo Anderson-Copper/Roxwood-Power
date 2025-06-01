@@ -25,13 +25,6 @@ const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
 
-const LTD_ROLES = {
-  'LTD Grove Street': '1375134927158247628',
-  'LTD Little Seoul': '1375135009769394257',
-  'LTD Sandy Shores': '1375135009857601586',
-  'LTD Roxwood': '1375135010696200234'
-};
-
 const couleurs = {
   rouge: 0xFF0000,
   orange: 0xFFA500,
@@ -91,7 +84,7 @@ async function archiveAndResetEmbeds() {
     const couleur = LTD_couleurs[titre];
     const desc = embed.description || '';
     const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
-    const objectif = parseInt(desc.match(/\/ (\d+) L/)?[1]) || 0;
+    const objectif = parseInt(desc.match(/\/ (\d+) L/)?.[1]) || 0;
     const montant = Math.round((volume / 15) * 35);
 
     volumeMap[titre] = 0;
@@ -103,9 +96,8 @@ async function archiveAndResetEmbeds() {
     });
     threadsMap[titre] = thread;
 
-    const roleMention = LTD_ROLES[titre] ? ` <@&${LTD_ROLES[titre]}>` : '';
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}>${roleMention} • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
       embeds: [embed]
     });
 
@@ -125,8 +117,59 @@ async function archiveAndResetEmbeds() {
   }
 }
 
-// (le reste du script reste inchangé, envoi automatique et manuelle ok)
+client.on(Events.MessageCreate, async message => {
+  if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
+    const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
+    const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[1];
+    const objectif = parseInt(quantiteMatch[1]);
+    objectifMap[entreprise] = objectif;
+  }
+
+  if (message.channelId !== LIAISON_DEPOTS_ID) return;
+  const embed = message.embeds[0];
+  if (!embed || !embed.title) return;
+
+  const titre = embed.title;
+  const qtyField = embed.fields.find(f => f.name.toLowerCase().includes('quantité'));
+  const bidons = qtyField ? parseInt(qtyField.value) : 0;
+  if (!titre || isNaN(bidons)) return;
+
+  const ajout = bidons * 15;
+  volumeMap[titre] = (volumeMap[titre] || 0) + ajout;
+  const objectif = objectifMap[titre] || 0;
+  const newEmbed = new EmbedBuilder()
+    .setTitle(titre)
+    .setDescription(`\n**${volumeMap[titre]} L** / ${objectif} L\n${generateProgressBar(volumeMap[titre], objectif)}`)
+    .setColor(couleurs[LTD_couleurs[titre]])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+  const msg = messages.find(m => m.embeds[0]?.title === titre);
+  if (!msg) return;
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+  );
+  await msg.edit({ embeds: [newEmbed], components: [row] });
+});
+
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isButton()) return;
+  if (interaction.customId !== 'archiver') return;
+  if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
+    return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
+  }
+
+  await interaction.deferReply({ flags: 64 }).catch(() => {});
+  archiveAndResetEmbeds();
+  interaction.editReply({ content: '✅ Archivage manuel effectué.' }).catch(() => {});
+});
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
 
