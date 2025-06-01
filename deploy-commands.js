@@ -102,10 +102,10 @@ const commands = [
     console.log('🧽 Commandes précédentes supprimées.');
 
     console.log('🔁 Déploiement des commandes slash...');
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands }).
+      then((value) => {console.log("then2", value)}).
+      catch((error) => {console.error("error2", error)});
     console.log('✅ Commandes slash enregistrées avec succès !');
-  } catch (error) {
-    console.error('❌ Erreur lors de l’enregistrement des commandes slash :', error);
   }
 })();
 
