@@ -1,4 +1,4 @@
-// 📦 consommation.js (script complet avec archivage, suivi, et bouton sécurisé)
+// 📦 consommation.js (script complet avec archivage, suivi, bouton sécurisé, et mention LTD + admin dans les threads)
 require('dotenv').config();
 const {
   Client,
@@ -37,6 +37,13 @@ const LTD_couleurs = {
   'LTD Sandy Shores': 'orange',
   'LTD Little Seoul': 'vert',
   'LTD Roxwood': 'bleu'
+};
+
+const LTD_roles = {
+  'LTD Grove Street': '1375134927158247628',
+  'LTD Little Seoul': '1375135009769394257',
+  'LTD Sandy Shores': '1375135009857601586',
+  'LTD Roxwood': '1375135010696200234'
 };
 
 const objectifMap = {};
@@ -96,8 +103,10 @@ async function archiveAndResetEmbeds() {
     });
     threadsMap[titre] = thread;
 
+    const mention = `<@&${ROLE_ADMIN_ID}>${LTD_roles[titre] ? ` <@&${LTD_roles[titre]}>` : ''}`;
+
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      content: `${mention} • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
       embeds: [embed]
     });
 
@@ -170,6 +179,7 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
+
 
 
 
