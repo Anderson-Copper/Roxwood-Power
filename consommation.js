@@ -104,7 +104,7 @@ async function archiveAndResetEmbeds() {
     threadsMap[titre] = thread;
 
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> • <@&${LTD_ROLES} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      content: `<@&${ROLE_ADMIN_ID}> • <@&${LTD_ROLES}> a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
       embeds: [embed]
     });
 
