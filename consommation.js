@@ -186,19 +186,14 @@ const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entrep
 function scheduleWeeklyReset() {
   const now = new Date();
   const resetTime = new Date();
-  resetTime.setHours(13 , 20, 0, 0); // Pour aujourd'hui à 13h12
-
-  if (resetTime < now) {
-    resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
-  }
-
+  resetTime.setHours(13, 39, 0, 0);
+  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 1);
   const delay = resetTime.getTime() - now.getTime();
   console.log(`⏳ Réinitialisation planifiée dans ${Math.round(delay / 1000)} secondes.`);
-
   setTimeout(() => {
     archiveAndResetEmbeds();
-    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000)
- }, delay);
+    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
+  }, delay);
 }
 
 async function archiveAndResetEmbeds() {
@@ -210,12 +205,13 @@ async function archiveAndResetEmbeds() {
     if (!embed || !embed.title) continue;
 
     const titre = embed.title;
-const couleur = LTD_couleurs[titre];
-const desc = embed.description || '';
-const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
-const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);
-const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[titre] ?? 0);
-objectifMap[titre] = objectif;
+    const couleur = LTD_couleurs[titre];
+    const desc = embed.description || '';
+    const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
+    const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[titre] ?? 0);
+    objectifMap[titre] = objectif;
+    const montant = Math.round((volume / 15) * 35);
 
     // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
     const liaisonId = LTD_LIAISONS[titre];
