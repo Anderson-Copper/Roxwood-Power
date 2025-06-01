@@ -59,18 +59,12 @@ const LTD_couleurs = {
 };
 
 const objectifMap = {};
-const volumeMap = {};
-const threadsMap = {};
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
   const filled = Math.round(percent * length);
   const empty = Math.max(length - filled, 0);
   return '▰'.repeat(filled) + '▱'.repeat(empty);
-}
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 client.once('ready', () => {
@@ -99,6 +93,15 @@ client.on('messageCreate', async message => {
         return updateObjectif(entreprise, ajoutObjectif, false);
       }
     }
+  }
+
+  if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
+    const entrepriseMatch = message.content.match(/LTD .+/);
+    const quantiteMatch = message.content.match(/Quantité déposé\n(\d+)/);
+    if (!entrepriseMatch || !quantiteMatch) return;
+    const entreprise = entrepriseMatch[0];
+    const ajout = parseInt(quantiteMatch[1]) * 15;
+    return updateVolume(entreprise, ajout);
   }
 
   if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
@@ -191,6 +194,132 @@ function scheduleWeeklyReset() {
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
   }, delay);
 }
+
+async function archiveAndResetEmbeds() {
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  const messages = await channel.messages.fetch({ limit: 50 });
+
+  for (const msg of messages.values()) {
+    const embed = msg.embeds[0];
+    if (!embed || !embed.title) continue;
+
+    const titre = embed.title;
+    const couleur = LTD_couleurs[titre];
+    const desc = embed.description || '';
+    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const montant = Math.round((volume / 15) * 35);
+
+    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
+    const liaisonId = LTD_LIAISONS[titre];
+    const ltdRoleId = LTD_ROLES[titre];
+    if (liaisonId) {
+      const liaisonChannel = await client.channels.fetch(liaisonId);
+      await liaisonChannel.send({
+        content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+      });
+    }
+
+    // ARCHIVE : thread (embed seulement)
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+    await thread.send({ embeds: [embed] });
+
+    // RESET EMBED PRINCIPAL
+    const objectif = objectifMap[titre] ?? 0;
+    const percentBar = generateProgressBar(0, objectif);
+    const newEmbed = new EmbedBuilder()
+      .setTitle(titre)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+  }
+}
+
+client.on('interactionCreate', async interaction => {
+  if (interaction.isButton() && interaction.customId === 'archiver') {
+    if (!interaction.member.roles.cache.has(ROLE_DEV_ID)) {
+      return interaction.reply({ content: '❌ Tu n’as pas la permission d’archiver ce message.', flags: 64 }).catch(() => {});
+    }
+
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: 64 }).catch(() => {});
+      }
+
+      const msg = await interaction.channel.messages.fetch(interaction.message.id);
+      const embed = msg.embeds[0];
+      const titre = embed?.title;
+      const desc = embed?.description || '';
+      const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+      const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+      const montant = Math.round((volume / 15) * 35);
+
+      // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
+      const liaisonId = LTD_LIAISONS[titre];
+      const ltdRoleId = LTD_ROLES[titre];
+      if (liaisonId) {
+        const liaisonChannel = await client.channels.fetch(liaisonId);
+        await liaisonChannel.send({
+          content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+        });
+      }
+
+      // ARCHIVE : thread (embed seulement)
+      const thread = await interaction.channel.threads.create({
+        name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+      });
+      await thread.send({ embeds: [embed] });
+
+      await msg.delete().catch(() => {});
+      await interaction.editReply({ content: '✅ Embed archivé avec succès.' }).catch(() => {});
+    } catch (err) {
+      console.error('❌ Erreur d’archivage :', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'Erreur lors de l’archivage.', flags: 64 }).catch(() => {});
+      }
+    }
+  }
+
+  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
+    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
+    }
+
+    const entreprise = interaction.options.getString('entreprise');
+    const couleur = interaction.options.getString('couleur');
+    const objectif = interaction.options.getInteger('objectif_litre');
+
+    objectifMap[entreprise] = objectif;
+    const percentBar = generateProgressBar(0, objectif);
+
+    const embed = new EmbedBuilder()
+      .setTitle(entreprise)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setColor(couleurs[couleur])
+      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+    );
+
+    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+    await channel.send({ embeds: [embed], components: [row] });
+    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
+  }
+});
 
 client.login(process.env.DISCORD_TOKEN_PWR);
 
