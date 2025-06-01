@@ -186,7 +186,7 @@ async function updateVolume(entreprise, ajout) {
 function scheduleWeeklyReset() {
   const now = new Date();
   const resetTime = new Date();
-  resetTime.setHours(12, 51, 0, 0); // Pour aujourd'hui à 12h51
+  resetTime.setHours(13 , 0, 0, 0); // Pour aujourd'hui à 12h58
 
   if (resetTime < now) {
     resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
@@ -198,6 +198,8 @@ function scheduleWeeklyReset() {
   setTimeout(() => {
     archiveAndResetEmbeds();
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000)
+ }, delay);
+}
 
 async function archiveAndResetEmbeds() {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
