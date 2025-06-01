@@ -2,9 +2,6 @@
 require('dotenv').config();
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
-console.log('📦 CLIENT_ID:', process.env.CLIENT_ID_PWR);
-console.log('🔐 TOKEN:', process.env.DISCORD_TOKEN_PWR ? '[OK]' : '[MANQUANT]');
-
 const CLIENT_ID = process.env.CLIENT_ID_PWR;
 const GUILD_ID = '1363243114822766763';
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
@@ -104,13 +101,12 @@ const commands = [
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
     console.log('🧽 Commandes précédentes supprimées.');
 
-    try {
-  console.log('🔁 Déploiement des commandes slash...');
-  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-  console.log('✅ Commandes slash enregistrées avec succès !');
-} catch (err) {
-  console.error('❌ Erreur lors du déploiement des commandes slash :', err);
-}
+    console.log('🔁 Déploiement des commandes slash...');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    console.log('✅ Commandes slash enregistrées avec succès !');
+  } catch (error) {
+    console.error('❌ Erreur lors de l’enregistrement des commandes slash :', error);
+  }
 })();
 
 

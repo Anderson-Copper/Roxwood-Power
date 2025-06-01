@@ -195,9 +195,6 @@ function scheduleWeeklyReset() {
   }, delay);
 }
 
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 async function archiveAndResetEmbeds() {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -209,37 +206,33 @@ async function archiveAndResetEmbeds() {
     const titre = embed.title;
     const couleur = LTD_couleurs[titre];
     const desc = embed.description || '';
-    const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
-    const objectif = parseInt(desc.match(/\/ (\d+) L/)?.[1]) || 0;
+    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
-    // Mise à jour des maps
-    volumeMap[titre] = 0;
-    objectifMap[titre] = objectif;
+    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
+    const liaisonId = LTD_LIAISONS[titre];
+    const ltdRoleId = LTD_ROLES[titre];
+    if (liaisonId) {
+      const liaisonChannel = await client.channels.fetch(liaisonId);
+      await liaisonChannel.send({
+        content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+      });
+    }
 
-    // Archive dans un thread
-    const thread = threadsMap[titre] || await channel.threads.create({
-      name: `📁 ${titre}`,
+    // ARCHIVE : thread (embed seulement)
+    const thread = await channel.threads.create({
+      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
     });
-    threadsMap[titre] = thread;
+    await thread.send({ embeds: [embed] });
 
-    const mention = `<@&${ROLE_ADMIN_ID}>${LTD_roles[titre] ? ` <@&${LTD_roles[titre]}>` : ''}`;
-    await thread.send({
-      content: `${mention} • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
-      embeds: [embed]
-    });
-
-    // Supprimer l'ancien message
-    await msg.delete().catch(() => {});
-
-    // Attendre 2s pour que les archives soient visuellement "au-dessus"
-    await wait(2000);
-
-    // Créer le nouvel embed à 0L avec l’ancien objectif conservé
+    // RESET EMBED PRINCIPAL
+    const objectif = objectifMap[titre] ?? 0;
+    const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
       .setTitle(titre)
-      .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
+      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
       .setColor(couleurs[couleur])
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
       .setTimestamp();
@@ -248,8 +241,8 @@ async function archiveAndResetEmbeds() {
       new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
-    await channel.send({ embeds: [newEmbed], components: [row] });
-    console.log(`🗂 ${titre} archivé et réinitialisé à 0L avec objectif ${objectif}L.`);
+    await msg.edit({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
 }
 
@@ -329,7 +322,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
-
-
 
 

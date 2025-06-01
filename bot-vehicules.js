@@ -109,8 +109,7 @@ client.once('ready', async () => {
   await resyncVehiclesFromChannels([
     '1374865698882453596',
     '1374884208924692562',
-    '1374884419818618920',
-    '1377491077946413147'
+    '1374884419818618920'
   ]);
 });
 
@@ -160,8 +159,7 @@ client.on('interactionCreate', async interaction => {
       await resyncVehiclesFromChannels([
         '1374865698882453596',
         '1374884208924692562',
-        '1374884419818618920',
-        '1377491077946413147'
+        '1374884419818618920'
       ]);
 
       await interaction.editReply({ content: '✅ Véhicules resynchronisés avec succès !' });
