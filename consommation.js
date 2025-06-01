@@ -197,11 +197,12 @@ async function updateVolume(entreprise, ajout) {
 
 function scheduleWeeklyReset() {
   const now = new Date();
-  // Test: Reset aujourd'hui à 16h08 (heure du serveur)
+  // Reset chaque vendredi à 21h59 (heure du serveur)
   const resetTime = new Date(now);
-  resetTime.setHours(14, 8, 0, 0);
+  resetTime.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7)); // Prochain vendredi
+  resetTime.setHours(21, 59, 0, 0);
 
-  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 1); // Si déjà passé aujourd'hui, décale à demain
+  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 7); // Si déjà passé, décale à la semaine suivante
   const delay = resetTime.getTime() - now.getTime();
 
   console.log(`⏳ Réinitialisation planifiée dans ${Math.round(delay / 1000)} secondes.`);
