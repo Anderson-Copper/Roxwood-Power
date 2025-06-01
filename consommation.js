@@ -186,7 +186,7 @@ const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entrep
 function scheduleWeeklyReset() {
   const now = new Date();
   const resetTime = new Date();
-  resetTime.setHours(13 , 12, 0, 0); // Pour aujourd'hui à 13h12
+  resetTime.setHours(13 , 20, 0, 0); // Pour aujourd'hui à 13h12
 
   if (resetTime < now) {
     resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
