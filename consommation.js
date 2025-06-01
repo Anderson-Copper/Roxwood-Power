@@ -167,34 +167,35 @@ client.on(Events.MessageCreate, async message => {
 });
 
 client.on(Events.InteractionCreate, async interaction => {
-  if (interaction.isChatInputCommand() && interaction.commandName === 'creer-embed') {
-    if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
-      return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 });
-    }
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'creer-embed') return;
 
-    const entreprise = interaction.options.getString('entreprise');
-    const couleur = interaction.options.getString('couleur');
-    const objectif = interaction.options.getInteger('objectif_litre');
-
-    objectifMap[entreprise] = objectif;
-    volumeMap[entreprise] = 0;
-
-    const embed = new EmbedBuilder()
-      .setTitle(entreprise)
-      .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
-      .setColor(couleurs[couleur])
-      .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-      .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-    );
-
-    const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-    await channel.send({ embeds: [embed], components: [row] });
-
-    await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
+  if (!interaction.member.roles.cache.has(ROLE_ADMIN_ID)) {
+    return interaction.reply({ content: '❌ Tu n’as pas la permission.', flags: 64 }).catch(() => {});
   }
+
+  const entreprise = interaction.options.getString('entreprise');
+  const couleur = interaction.options.getString('couleur');
+  const objectif = interaction.options.getInteger('objectif_litre');
+
+  objectifMap[entreprise] = objectif;
+  volumeMap[entreprise] = 0;
+
+  const embed = new EmbedBuilder()
+    .setTitle(entreprise)
+    .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
+    .setColor(couleurs[couleur])
+    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
+    .setTimestamp();
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
+  );
+
+  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
+  await channel.send({ embeds: [embed], components: [row] });
+
+  await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 }).catch(() => {});
 });
 
 client.login(process.env.DISCORD_TOKEN_PWR);
