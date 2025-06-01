@@ -198,7 +198,6 @@ function scheduleWeeklyReset() {
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 async function archiveAndResetEmbeds() {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -214,9 +213,11 @@ async function archiveAndResetEmbeds() {
     const objectif = parseInt(desc.match(/\/ (\d+) L/)?.[1]) || 0;
     const montant = Math.round((volume / 15) * 35);
 
+    // Mise à jour des maps
     volumeMap[titre] = 0;
     objectifMap[titre] = objectif;
 
+    // Archive dans un thread
     const thread = threadsMap[titre] || await channel.threads.create({
       name: `📁 ${titre}`,
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
@@ -229,9 +230,13 @@ async function archiveAndResetEmbeds() {
       embeds: [embed]
     });
 
-    // On attend 2 secondes pour que l’ordre d’affichage soit respecté
+    // Supprimer l'ancien message
+    await msg.delete().catch(() => {});
+
+    // Attendre 2s pour que les archives soient visuellement "au-dessus"
     await wait(2000);
 
+    // Créer le nouvel embed à 0L avec l’ancien objectif conservé
     const newEmbed = new EmbedBuilder()
       .setTitle(titre)
       .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
@@ -243,8 +248,8 @@ async function archiveAndResetEmbeds() {
       new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
-    await msg.delete().catch(() => {});
     await channel.send({ embeds: [newEmbed], components: [row] });
+    console.log(`🗂 ${titre} archivé et réinitialisé à 0L avec objectif ${objectif}L.`);
   }
 }
 
