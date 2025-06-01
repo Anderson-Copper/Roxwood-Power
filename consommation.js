@@ -179,20 +179,15 @@ client.on(Events.InteractionCreate, async interaction => {
     objectifMap[entreprise] = objectif;
     volumeMap[entreprise] = 0;
 
-    const percentBar = generateProgressBar(0, objectif);
-
     const embed = new EmbedBuilder()
       .setTitle(entreprise)
-      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
       .setColor(couleurs[couleur])
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('archiver')
-        .setLabel('🗂 Archiver')
-        .setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
     const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
@@ -201,7 +196,6 @@ client.on(Events.InteractionCreate, async interaction => {
     await interaction.reply({ content: `✅ Embed créé pour ${entreprise}`, flags: 64 });
   }
 });
-
 
 client.login(process.env.DISCORD_TOKEN_PWR);
 
