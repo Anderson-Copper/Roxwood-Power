@@ -186,7 +186,7 @@ async function updateVolume(entreprise, ajout) {
 function scheduleWeeklyReset() {
   const now = new Date();
   const resetTime = new Date();
-  resetTime.setHours(14, 35, 0, 0); // Pour aujourd'hui à 14h35
+  resetTime.setHours(12, 45, 0, 0); // Pour aujourd'hui à 12h45
 
   if (resetTime < now) {
     resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
