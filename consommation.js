@@ -111,85 +111,6 @@ client.on('messageCreate', async message => {
   }
 });
 
-async function updateObjectif(entreprise, valeur, remplacer = true) {
-  const couleur = LTD_couleurs[entreprise];
-  if (!couleur) return;
-  const actuel = objectifMap[entreprise] ?? 0;
-  const objectif = remplacer ? valeur : actuel + valeur;
-  objectifMap[entreprise] = objectif;
-
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  const messages = await channel.messages.fetch({ limit: 50 });
-  const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
-  if (!embedMessage) return;
-
-  const oldEmbed = embedMessage.embeds[0];
-  const desc = oldEmbed.description || '';
-  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-  const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const percentBar = generateProgressBar(volume, objectif);
-
-  const embed = new EmbedBuilder()
-    .setTitle(entreprise)
-    .setDescription(`\n**${volume} L** / ${objectif} L\n${percentBar}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
-
-  await embedMessage.edit({ embeds: [embed], components: [row] });
-  console.log(`✅ Objectif ${remplacer ? 'défini' : 'ajouté'} pour ${entreprise} → ${objectif}L.`);
-}
-
-async function updateVolume(entreprise, ajout) {
-  const couleur = LTD_couleurs[entreprise];
-  if (!couleur) return;
-
-  const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
-  const messages = await channel.messages.fetch({ limit: 50 });
-  const embedMessage = messages.find(m => m.embeds[0]?.title === entreprise);
-  if (!embedMessage) return;
-
-  const oldEmbed = embedMessage.embeds[0];
-  const desc = oldEmbed.description || '';
-  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-  const objectifMatch = desc.match(/\/ (\d+) L/);
-  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
-
-  const nouveauVolume = actuel + ajout;
-  const percentBar = generateProgressBar(nouveauVolume, objectif);
-
-  const embed = new EmbedBuilder()
-    .setTitle(entreprise)
-    .setDescription(`\n**${nouveauVolume} L** / ${objectif} L\n${percentBar}`)
-    .setColor(couleurs[couleur])
-    .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
-  );
-
-  await embedMessage.edit({ embeds: [embed], components: [row] });
-  console.log(`📦 Volume mis à jour pour ${entreprise} : +${ajout}L → Total ${nouveauVolume}L.`);
-}
-
-function scheduleWeeklyReset() {
-  const now = new Date();
-  const nextFriday = new Date();
-  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
-  nextFriday.setHours(23, 59, 0, 0);
-  const delay = nextFriday.getTime() - now.getTime();
-  setTimeout(() => {
-    archiveAndResetEmbeds();
-    setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
-  }, delay);
-}
-
 async function archiveAndResetEmbeds(interaction = null) {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -222,6 +143,7 @@ async function archiveAndResetEmbeds(interaction = null) {
       content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
     });
     await thread.send({ embeds: [embed] });
+    await msg.delete().catch(() => {});
 
     const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
@@ -235,7 +157,6 @@ async function archiveAndResetEmbeds(interaction = null) {
       new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
-    await msg.edit({ embeds: [newEmbed], components: [row] });
     await channel.send({ embeds: [newEmbed], components: [row] });
     console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
