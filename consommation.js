@@ -159,11 +159,11 @@ async function updateVolume(entreprise, ajout) {
   if (!embedMessage) return;
 
   const oldEmbed = embedMessage.embeds[0];
-  const desc = oldEmbed.description || '';
-  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-  const objectifMatch = desc.match(/\/ (\d+) L/);
-  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+const desc = oldEmbed.description || '';
+const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);  // ✅ Tolère les espaces
+const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
 
   const nouveauVolume = actuel + ajout;
   const percentBar = generateProgressBar(nouveauVolume, objectif);
@@ -186,7 +186,7 @@ async function updateVolume(entreprise, ajout) {
 function scheduleWeeklyReset() {
   const now = new Date();
   const resetTime = new Date();
-  resetTime.setHours(13 , 0, 0, 0); // Pour aujourd'hui à 12h58
+  resetTime.setHours(13 , 12, 0, 0); // Pour aujourd'hui à 13h12
 
   if (resetTime < now) {
     resetTime.setDate(resetTime.getDate() + 1); // Si l'heure est déjà passée, on décale à demain
