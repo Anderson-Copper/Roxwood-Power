@@ -210,11 +210,12 @@ async function archiveAndResetEmbeds() {
     if (!embed || !embed.title) continue;
 
     const titre = embed.title;
-    const couleur = LTD_couleurs[titre];
-    const desc = embed.description || '';
-    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-    const montant = Math.round((volume / 15) * 35);
+const couleur = LTD_couleurs[titre];
+const desc = embed.description || '';
+const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
+const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);
+const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[titre] ?? 0);
+objectifMap[titre] = objectif;
 
     // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
     const liaisonId = LTD_LIAISONS[titre];
