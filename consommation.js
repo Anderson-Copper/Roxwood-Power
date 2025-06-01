@@ -195,6 +195,10 @@ function scheduleWeeklyReset() {
   }, delay);
 }
 
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function archiveAndResetEmbeds() {
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -206,33 +210,31 @@ async function archiveAndResetEmbeds() {
     const titre = embed.title;
     const couleur = LTD_couleurs[titre];
     const desc = embed.description || '';
-    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+    const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
+    const objectif = parseInt(desc.match(/\/ (\d+) L/)?.[1]) || 0;
     const montant = Math.round((volume / 15) * 35);
 
-    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
-    const liaisonId = LTD_LIAISONS[titre];
-    const ltdRoleId = LTD_ROLES[titre];
-    if (liaisonId) {
-      const liaisonChannel = await client.channels.fetch(liaisonId);
-      await liaisonChannel.send({
-        content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
-      });
-    }
+    volumeMap[titre] = 0;
+    objectifMap[titre] = objectif;
 
-    // ARCHIVE : thread (embed seulement)
-    const thread = await channel.threads.create({
-      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
+    const thread = threadsMap[titre] || await channel.threads.create({
+      name: `📁 ${titre}`,
       autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
     });
-    await thread.send({ embeds: [embed] });
+    threadsMap[titre] = thread;
 
-    // RESET EMBED PRINCIPAL
-    const objectif = objectifMap[titre] ?? 0;
-    const percentBar = generateProgressBar(0, objectif);
+    const mention = `<@&${ROLE_ADMIN_ID}>${LTD_roles[titre] ? ` <@&${LTD_roles[titre]}>` : ''}`;
+    await thread.send({
+      content: `${mention} • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      embeds: [embed]
+    });
+
+    // On attend 2 secondes pour que l’ordre d’affichage soit respecté
+    await wait(2000);
+
     const newEmbed = new EmbedBuilder()
       .setTitle(titre)
-      .setDescription(`\n**0 L** / ${objectif} L\n${percentBar}`)
+      .setDescription(`\n**0 L** / ${objectif} L\n${generateProgressBar(0, objectif)}`)
       .setColor(couleurs[couleur])
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/2933/2933929.png')
       .setTimestamp();
@@ -241,8 +243,8 @@ async function archiveAndResetEmbeds() {
       new ButtonBuilder().setCustomId('archiver').setLabel('🗂 Archiver').setStyle(ButtonStyle.Secondary)
     );
 
-    await msg.edit({ embeds: [newEmbed], components: [row] });
-    console.log(`🗂 Archivé & remis à zéro : ${titre}`);
+    await msg.delete().catch(() => {});
+    await channel.send({ embeds: [newEmbed], components: [row] });
   }
 }
 
