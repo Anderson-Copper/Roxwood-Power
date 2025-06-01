@@ -58,7 +58,10 @@ const LTD_couleurs = {
   'LTD Roxwood': 'bleu'
 };
 
+// Stocke les objectifs en mémoire
 const objectifMap = {};
+// Stocke les threads d'archive pour chaque LTD
+const archiveThreadMap = {};
 
 function generateProgressBar(current, max, length = 20) {
   const percent = Math.min(current / max, 1);
@@ -72,7 +75,10 @@ client.once('ready', () => {
   scheduleWeeklyReset();
 });
 
+// --- Gestion des messages ---
+
 client.on('messageCreate', async message => {
+  // Ajustement demandé
   if (message.channelId === LIAISON_AJUSTEMENT_ID && message.content.includes('Ajustement demandé')) {
     const entrepriseMatch = message.content.match(/par (LTD [^\n]+)/);
     const quantiteMatch = message.content.match(/Quantité: (\d+) Litre/);
@@ -82,6 +88,7 @@ client.on('messageCreate', async message => {
     return updateObjectif(entreprise, objectif, true);
   }
 
+  // Nouvelle commande
   for (const [entreprise, channelId] of Object.entries(LTD_CHANNELS)) {
     if (message.channelId === channelId && message.embeds.length > 0) {
       const embed = message.embeds[0];
@@ -95,6 +102,7 @@ client.on('messageCreate', async message => {
     }
   }
 
+  // Dépôt via message texte
   if (message.channelId === LIAISON_DEPOTS_ID && message.content.includes('Quantité déposé')) {
     const entrepriseMatch = message.content.match(/LTD .+/);
     const quantiteMatch = message.content.match(/Quantité déposé\n(\d+)/);
@@ -104,6 +112,7 @@ client.on('messageCreate', async message => {
     return updateVolume(entreprise, ajout);
   }
 
+  // Dépôt via embed
   if (message.channelId === LIAISON_DEPOTS_ID && message.embeds.length > 0) {
     const embed = message.embeds[0];
     const entrepriseMatch = embed.title?.match(/LTD .+/);
@@ -115,6 +124,8 @@ client.on('messageCreate', async message => {
     return updateVolume(entreprise, bidons * 15);
   }
 });
+
+// --- Fonctions principales ---
 
 async function updateObjectif(entreprise, valeur, remplacer = true) {
   const couleur = LTD_couleurs[entreprise];
@@ -164,6 +175,7 @@ async function updateVolume(entreprise, ajout) {
   const objectifMatch = desc.match(/\/ (\d+) L/);
   const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
   const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+  objectifMap[entreprise] = objectif;
 
   const nouveauVolume = actuel + ajout;
   const percentBar = generateProgressBar(nouveauVolume, objectif);
@@ -185,10 +197,12 @@ async function updateVolume(entreprise, ajout) {
 
 function scheduleWeeklyReset() {
   const now = new Date();
-  const resetTime = new Date();
-  resetTime.setHours(13, 50, 0, 0); // ✅ Aujourd'hui à 15h50
+  // Reset chaque vendredi à 23h59
+  const resetTime = new Date(now);
+  resetTime.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7)); // Prochain vendredi
+  resetTime.setHours(23, 59, 0, 0);
 
-  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 1); // Si déjà passé, décale à demain
+  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 7); // Si déjà passé, décale à la semaine suivante
   const delay = resetTime.getTime() - now.getTime();
 
   console.log(`⏳ Réinitialisation planifiée dans ${Math.round(delay / 1000)} secondes.`);
@@ -196,6 +210,29 @@ function scheduleWeeklyReset() {
     archiveAndResetEmbeds();
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
   }, delay);
+}
+
+// Récupère ou crée le thread d’archive pour un LTD
+async function getOrCreateArchiveThread(channel, entreprise) {
+  if (archiveThreadMap[entreprise]) {
+    try {
+      const thread = await channel.threads.fetch(archiveThreadMap[entreprise]);
+      if (thread) return thread;
+    } catch (e) {
+      // Thread supprimé ou expiré, on continue
+    }
+  }
+  // Sinon, cherche un thread existant par nom
+  const threads = await channel.threads.fetchActive();
+  let thread = threads.threads.find(t => t.name === `📁 Archive - ${entreprise}`);
+  if (!thread) {
+    thread = await channel.threads.create({
+      name: `📁 Archive - ${entreprise}`,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
+    });
+  }
+  archiveThreadMap[entreprise] = thread.id;
+  return thread;
 }
 
 async function archiveAndResetEmbeds() {
@@ -211,9 +248,12 @@ async function archiveAndResetEmbeds() {
     const desc = embed.description || '';
     const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
     const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-    const montant = Math.round((volume / 15) * 35);
+    const objectifMatch = desc.match(/\/ (\d+) L/);
+    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[titre] ?? 0;
+    objectifMap[titre] = objectif;
 
-    // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
+    // ENVOI FACTURE DANS LA LIAISON DU LTD
+    const montant = Math.round((volume / 15) * 35);
     const liaisonId = LTD_LIAISONS[titre];
     const ltdRoleId = LTD_ROLES[titre];
     if (liaisonId) {
@@ -223,15 +263,11 @@ async function archiveAndResetEmbeds() {
       });
     }
 
-    // ARCHIVE : thread (embed seulement)
-    const thread = await channel.threads.create({
-      name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
-      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-    });
+    // ARCHIVE: thread unique
+    const thread = await getOrCreateArchiveThread(channel, titre);
     await thread.send({ embeds: [embed] });
 
     // RESET EMBED PRINCIPAL
-    const objectif = objectifMap[titre] ?? 0;
     const percentBar = generateProgressBar(0, objectif);
     const newEmbed = new EmbedBuilder()
       .setTitle(titre)
@@ -248,6 +284,8 @@ async function archiveAndResetEmbeds() {
     console.log(`🗂 Archivé & remis à zéro : ${titre}`);
   }
 }
+
+// --- Gestion des interactions ---
 
 client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'archiver') {
@@ -268,7 +306,7 @@ client.on('interactionCreate', async interaction => {
       const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
       const montant = Math.round((volume / 15) * 35);
 
-      // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
+      // Facture
       const liaisonId = LTD_LIAISONS[titre];
       const ltdRoleId = LTD_ROLES[titre];
       if (liaisonId) {
@@ -278,11 +316,9 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // ARCHIVE : thread (embed seulement)
-      const thread = await interaction.channel.threads.create({
-        name: `📁 Archive - ${titre} - ${new Date().toLocaleDateString('fr-FR')}`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek
-      });
+      // ARCHIVE : thread unique
+      const consoChannel = await client.channels.fetch(CONSO_CHANNEL_ID);
+      const thread = await getOrCreateArchiveThread(consoChannel, titre);
       await thread.send({ embeds: [embed] });
 
       await msg.delete().catch(() => {});
