@@ -104,12 +104,13 @@ const commands = [
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
     console.log('🧽 Commandes précédentes supprimées.');
 
-    console.log('🔁 Déploiement des commandes slash...');
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log('✅ Commandes slash enregistrées avec succès !');
-  } catch (error) {
-    console.error('❌ Erreur lors de l’enregistrement des commandes slash :', error);
-  }
+    try {
+  console.log('🔁 Déploiement des commandes slash...');
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+  console.log('✅ Commandes slash enregistrées avec succès !');
+} catch (err) {
+  console.error('❌ Erreur lors du déploiement des commandes slash :', err);
+}
 })();
 
 
