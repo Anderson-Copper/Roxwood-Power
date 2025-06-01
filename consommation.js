@@ -25,6 +25,13 @@ const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
 
+const LTD_ROLES = {
+  'LTD Grove Street': '1375134927158247628',
+  'LTD Little Seoul': '1375135009769394257',
+  'LTD Sandy Shores': '1375135009857601586',
+  'LTD Roxwood': '1375135010696200234'
+};
+
 const couleurs = {
   rouge: 0xFF0000,
   orange: 0xFFA500,
@@ -97,7 +104,7 @@ async function archiveAndResetEmbeds() {
     threadsMap[titre] = thread;
 
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      content: `<@&${ROLE_ADMIN_ID}> • <@&${LTD_ROLES} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
       embeds: [embed]
     });
 
