@@ -159,11 +159,11 @@ async function updateVolume(entreprise, ajout) {
   if (!embedMessage) return;
 
   const oldEmbed = embedMessage.embeds[0];
-const desc = oldEmbed.description || '';
-const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
-const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);  // ✅ Tolère les espaces
-const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
+  const desc = oldEmbed.description || '';
+  const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+  const objectifMatch = desc.match(/\/ (\d+) L/);
+  const actuel = volumeMatch ? parseInt(volumeMatch[1]) : 0;
+  const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entreprise] ?? 0;
 
   const nouveauVolume = actuel + ajout;
   const percentBar = generateProgressBar(nouveauVolume, objectif);
@@ -185,11 +185,10 @@ const objectif = objectifMatch ? parseInt(objectifMatch[1]) : objectifMap[entrep
 
 function scheduleWeeklyReset() {
   const now = new Date();
-  const resetTime = new Date();
-  resetTime.setHours(13, 39, 0, 0);
-  if (resetTime < now) resetTime.setDate(resetTime.getDate() + 1);
-  const delay = resetTime.getTime() - now.getTime();
-  console.log(`⏳ Réinitialisation planifiée dans ${Math.round(delay / 1000)} secondes.`);
+  const nextFriday = new Date();
+  nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
+  nextFriday.setHours(23, 59, 0, 0);
+  const delay = nextFriday.getTime() - now.getTime();
   setTimeout(() => {
     archiveAndResetEmbeds();
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
@@ -207,10 +206,8 @@ async function archiveAndResetEmbeds() {
     const titre = embed.title;
     const couleur = LTD_couleurs[titre];
     const desc = embed.description || '';
-    const volume = parseInt(desc.match(/\*\*(\d+) L\*\*/)?.[1]) || 0;
-    const objectifMatch = desc.match(/\/\s*(\d+)\s*L/);
-    const objectif = objectifMatch ? parseInt(objectifMatch[1]) : (objectifMap[titre] ?? 0);
-    objectifMap[titre] = objectif;
+    const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
+    const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
     const montant = Math.round((volume / 15) * 35);
 
     // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
