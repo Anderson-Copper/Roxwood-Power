@@ -2,6 +2,9 @@
 require('dotenv').config();
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
+console.log('📦 CLIENT_ID:', process.env.CLIENT_ID_PWR);
+console.log('🔐 TOKEN:', process.env.DISCORD_TOKEN_PWR ? '[OK]' : '[MANQUANT]');
+
 const CLIENT_ID = process.env.CLIENT_ID_PWR;
 const GUILD_ID = '1363243114822766763';
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN_PWR);
