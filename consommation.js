@@ -199,7 +199,7 @@ function scheduleWeeklyReset() {
   const now = new Date();
   // Test: Reset aujourd'hui à 16h08 (heure du serveur)
   const resetTime = new Date(now);
-  resetTime.setHours(16, 8, 0, 0);
+  resetTime.setHours(14, 8, 0, 0);
 
   if (resetTime < now) resetTime.setDate(resetTime.getDate() + 1); // Si déjà passé aujourd'hui, décale à demain
   const delay = resetTime.getTime() - now.getTime();
