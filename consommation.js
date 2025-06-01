@@ -1,4 +1,3 @@
-// 📦 consommation.js (script complet avec archivage, suivi, et bouton sécurisé)
 require('dotenv').config();
 const {
   Client,
@@ -24,6 +23,20 @@ const LIAISON_DEPOTS_ID = '1375152581307007056';
 const CONSO_CHANNEL_ID = '1374906428418031626';
 const ROLE_ADMIN_ID = '1375058990152548372';
 const ROLE_DEV_ID = '1374863891296682185';
+
+const LTD_CHANNELS = {
+  'LTD Grove Street': '1375406833212194856',
+  'LTD Little Seoul': '1375407141166518272',
+  'LTD Sandy Shores': '1375407195415511060',
+  'LTD Roxwood': '1375407362004750366'
+};
+
+const LTD_LIAISONS = {
+  'LTD Grove Street': '1375408011605966868',
+  'LTD Little Seoul': '1375408193064403044',
+  'LTD Sandy Shores': '1375408305110781982',
+  'LTD Roxwood': '1375408461172445214'
+};
 
 const LTD_ROLES = {
   'LTD Grove Street': '1375134927158247628',
@@ -104,7 +117,7 @@ async function archiveAndResetEmbeds() {
     threadsMap[titre] = thread;
 
     await thread.send({
-      content: `<@&${ROLE_ADMIN_ID}> • <@&${LTD_ROLES}> a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
+      content: `<@&${ROLE_ADMIN_ID}> • ${titre} a consommé **${volume} L** cette semaine. 💰 Facture : **${montant.toLocaleString()}$**`,
       embeds: [embed]
     });
 
