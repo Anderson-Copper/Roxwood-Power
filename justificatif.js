@@ -8,7 +8,7 @@
       font-family: 'Segoe UI', sans-serif;
       text-align: center;
       padding: 30px;
-      background-image: url('https://res.cloudinary.com/dvilvozbw/image/upload/v1746155459/olivier_q5fpd4.png');
+      background-image: url('https://i.postimg.cc/ZRj7TqyW/24-mai-2025-02-36-58.png');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -84,18 +84,11 @@
         <option value="⛽Frais d'essences">⛽Frais d'essences</option>
         <option value="🔧Frais de réparations">🔧Frais de réparations</option>
         <option value="🧰Frais de révisions">🧰Frais de révisions</option>
-        <option value="📦Matériels / Fournitures YouTools">📦Matériels / Fournitures YouTools</option>
-        <option value="🛒Commandes comptoir épicerie">🛒Commandes comptoir épicerie</option>
         <option value="👔Frais de textiles & accessoires">👔Frais de textiles & accessoires</option>
         <option value="🦐Commandes de Menu">🦐Commandes de Menu</option>
         <option value="🥦Commandes LD Organic">🥦Commandes LD Organic</option>
-        <option value="⛏️Davis Quartz">⛏️Davis Quartz</option>
-        <option value="🔩Commandes GB Foundry">🔩Commandes GB Foundry</option>
         <option value="🛢️Roxwood PWR">🛢️Roxwood PWR</option>
-        <option value="🌾Commandes Biogood">🌾Commandes Biogood</option>
-        <option value="🌽Commandes Grapeseed">🌽Commandes Grapeseed</option>
         <option value="📋Frais supplémentaires">📋Frais supplémentaires</option>
-        <option value="💻Commandes partenaires">💻Commandes partenaires</option>
       </select>
     <input type="number" id="depense-qte" placeholder="Quantité">
     <input type="number" id="depense-montant" placeholder="Montant $">
@@ -108,19 +101,9 @@
     <select id="commande-nom"></select>
     <select id="commande-frais">
         <option value="🥦Commande Bidons vides">🥦Commande Bidons vides</option>
-        <option value="⛏️Commande Charbons">⛏️Commande Charbons</option>
-        <option value="⛏️Commande Cuivres">⛏️Commande Cuivres</option>
-        <option value="🔩Commande Acier">🔩Commande Acier</option>
-        <option value="🔩Commande Lingot de Cuivres">🔩Commande Lingot de Cuivres</option>
-        <option value="🥦Commande Sacs en papier">🥦Commande Sacs en papier</option>
-        <option value="🥦Commande Sachets vides">🥦Commande Sachets vides</option>
         <option value="🦖Commande Menu Rex Dinner">🦖Commande Menu Rex Dinner</option>
         <option value="🐟Commande Menu Pearls">🐟Commande Menu Pearls</option>
         <option value="🍸Commande Menu Hen House">🍸Commande Menu Hen House</option>
-        <option value="🛢️Commande Bidons d'essences">🛢️Commande Bidons d'essences</option>
-        <option value="🌾Commandes Biogood">🌾Commandes Biogood</option>
-        <option value="🌽Commandes Grapeseed">🌽Commandes Grapeseed</option>
-        <option value="🍶Commandes Bouteille O²">🍶Commandes Bouteille O²</option>
         <option value="💻Commande Comptabilité">💻Commande Comptabilité</option>
         <option value="📸Commande Weazel News">📸Commande Weazel News</option>
         <option value="📩Commande Diverses">📩Commande Diverses</option>
@@ -136,12 +119,12 @@
 
 <script>
   const identifiants = [
-    { id: "ltd", mdp: "paleto" },
+    { id: "roxwood", mdp: "pwr" },
     { id: "papy", mdp: "papy" },
     { id: "noah", mdp: "1234" }
   ];
 
-  const noms = ["💼Léa Médina", "💼Ethan Revers", "📊Noah Oliveira", "👔Ethan Médina", "👔Leeloo Rex", "👔Franky Melloni", "💻Anderson Copper"];
+  const noms = ["💼Anderson Copper", "💼Charles Sinclair", "📊Alice Montgomery", "👔Logan Cooper", "Evan Cooper", "👔Leeloo Rex", "💻Snow Hill"];
 
   function validateLogin() {
     const id = document.getElementById('login-id').value.trim();
