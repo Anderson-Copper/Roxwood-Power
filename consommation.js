@@ -119,9 +119,6 @@ client.on('messageCreate', async message => {
 async function updateObjectif(entreprise, valeur, remplacer = true) {
   const couleur = LTD_couleurs[entreprise];
   if (!couleur) return;
-  const actuel = objectifMap[entreprise] ?? 0;
-  const objectif = remplacer ? valeur : actuel + valeur;
-  objectifMap[entreprise] = objectif;
 
   const channel = await client.channels.fetch(CONSO_CHANNEL_ID);
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -130,6 +127,13 @@ async function updateObjectif(entreprise, valeur, remplacer = true) {
 
   const oldEmbed = embedMessage.embeds[0];
   const desc = oldEmbed.description || '';
+  const objectifMatch = desc.match(/\/ (\d+) L/);
+  const objectifExistant = objectifMatch ? parseInt(objectifMatch[1]) : 0;
+
+  // Toujours lire l’objectif existant à partir de l’embed
+  const objectif = remplacer ? valeur : objectifExistant + valeur;
+  objectifMap[entreprise] = objectif;
+
   const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
   const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
   const percentBar = generateProgressBar(volume, objectif);
