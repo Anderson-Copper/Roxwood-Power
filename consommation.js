@@ -267,7 +267,7 @@ client.on('interactionCreate', async interaction => {
       const desc = embed?.description || '';
       const volumeMatch = desc.match(/\*\*(\d+) L\*\*/);
       const volume = volumeMatch ? parseInt(volumeMatch[1]) : 0;
-      const montant = Math.round((volume / 15) * 35);
+      const montant = Math.round((volume / 15) * 37.5);
 
       // ENVOI FACTURE DANS LA LIAISON DU LTD (mentionne admin + le role LTD)
       const liaisonId = LTD_LIAISONS[titre];
@@ -275,7 +275,7 @@ client.on('interactionCreate', async interaction => {
       if (liaisonId) {
         const liaisonChannel = await client.channels.fetch(liaisonId);
         await liaisonChannel.send({
-          content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (35$ par bidon de 15L)`
+          content: `<@&${ROLE_ADMIN_ID}>${ltdRoleId ? ` <@&${ltdRoleId}>` : ''} • ${titre} a consommé **${volume} L** cette semaine.\n💰 Facture : **${montant.toLocaleString()}$** (37.5$ par bidon de 15L)`
         });
       }
 
