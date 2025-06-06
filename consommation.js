@@ -193,6 +193,19 @@ function scheduleWeeklyReset() {
   nextFriday.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
   nextFriday.setHours(23, 59, 0, 0);
   const delay = nextFriday.getTime() - now.getTime();
+
+  // On vérifie la date du prochain vendredi
+  const nextFridayDateStr = nextFriday.toLocaleDateString('fr-FR'); // ex: "07/06/2025"
+
+  console.log(`📅 Prochain reset prévu pour le ${nextFridayDateStr} à 23h59`);
+
+  // Si ce n’est PAS le vendredi 13 juin 2025 → on ne planifie rien
+  if (nextFridayDateStr !== '13/06/2025') {
+    console.log('⛔ Reset automatique désactivé cette semaine (sera activé le 13/06/2025)');
+    return;
+  }
+
+  // Sinon, on planifie normalement
   setTimeout(() => {
     archiveAndResetEmbeds();
     setInterval(archiveAndResetEmbeds, 7 * 24 * 60 * 60 * 1000);
